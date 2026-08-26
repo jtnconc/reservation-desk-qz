@@ -4,7 +4,6 @@ import {
   ChevronUp,
   Copy,
   FileDown,
-  GripVertical,
   ImageUp,
   Plus,
   Trash2,
@@ -244,11 +243,12 @@ const toggleItem = (itemId: string) => {
 
   const addItem = () => {
     const last = quote.items[quote.items.length - 1];
+    const newItemId = uid();
     updateQuote({
       items: [
         ...quote.items,
         {
-          id: uid(),
+          id: newItemId,
           quantity: 1,
           roomType: roomTypes[0] ?? "",
           accommodation: "Single" as Accommodation,
@@ -260,6 +260,7 @@ const toggleItem = (itemId: string) => {
         },
       ],
     });
+    setCollapsedItems(new Set(quote.items.map((item) => item.id)));
   };
 
 
@@ -461,85 +462,106 @@ const toggleItem = (itemId: string) => {
               const nights = itemNights(item, quote);
               return (
                 <section key={item.id} className="overflow-hidden rounded-xl border border-border bg-surface">
-                  <div className="flex min-w-0 items-center gap-2 bg-surface-2 px-3 py-2.5">
-                    <GripVertical
-                      className="size-4 shrink-0 text-muted-foreground/60"
-                      aria-hidden="true"
-                    />
-                    <input
-                      type="number"
-                      min={1}
-                      value={item.quantity}
-                      onFocus={(event) => event.currentTarget.select()}
-                      onChange={(event) =>
-                        patchItem(item.id, {
-                          quantity: Math.max(1, Number(event.target.value)),
-                        })
-                      }
-                      aria-label={L.qty}
-                      className={cn(
-                        monoInput,
-                        "number-input-clean h-8 w-12 shrink-0 px-2 py-1 text-center font-semibold",
-                      )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <SoftSelect
-                        value={item.roomType}
-                        onChange={(value) => {
-                          if (value === "__manage") {
-                            setShowRooms(true);
-                            return;
-                          }
-                          patchItem(item.id, { roomType: value });
-                        }}
-                        options={[
-                          ...roomTypes.map((room) => ({ value: room, label: room })),
-                          {
-                            value: "__manage",
-                            label:
-                              lang === "es"
-                                ? "+ Gestionar/Editar habitaciones"
-                                : "+ Manage/Edit room types",
-                          },
-                        ]}
-                        className="h-8 border-0 bg-transparent px-1 py-1 font-semibold shadow-none"
-                        aria-label={L.roomType}
-                      />
-                    </div>
-                    <SoftSelect
-                      value={item.accommodation}
-                      onChange={(value) =>
-                        patchItem(item.id, { accommodation: value as Accommodation })
-                      }
-                      options={hotel.accommodations.map((option) => ({
-                        value: option,
-                        label: option,
-                      }))}
-                      className="h-7 w-auto shrink-0 rounded-full border-entity-date/30 bg-entity-date-bg px-2 py-0.5 text-[11px] font-medium"
-                      aria-label={L.accommodation}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => toggleItem(item.id)}
-                      aria-expanded={!collapsedItems.has(item.id)}
-                      aria-label={
-                        collapsedItems.has(item.id)
-                          ? lang === "es"
-                            ? "Expandir habitación"
-                            : "Expand room"
-                          : lang === "es"
-                            ? "Contraer habitación"
-                            : "Collapse room"
-                      }
-                      className="ml-auto shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                    >
-                      {collapsedItems.has(item.id) ? (
+                  {collapsedItems.has(item.id) ? (
+                    <div className="flex min-w-0 items-center gap-2 overflow-x-auto whitespace-nowrap bg-surface-2 px-3 py-2.5">
+                      <span className="shrink-0 text-[13px] font-semibold tabular-nums">
+                        {item.quantity || 1} {item.roomType}
+                      </span>
+                      <span className="shrink-0 rounded-full border border-entity-date/30 bg-entity-date-bg px-2 py-0.5 text-[11px] font-medium">
+                        {item.accommodation}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">
+                        {(item.guestName ?? "").trim() || "Por confirmar"}
+                      </span>
+                      <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                        {formatDate(item.arrival || quote.arrival, lang)} →{" "}
+                        {formatDate(item.departure || quote.departure, lang)}
+                      </span>
+                      <span className="shrink-0 text-[13px] font-semibold tabular-nums">
+                        {money(lineSubtotal(item, nights))}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleItem(item.id)}
+                        aria-expanded="false"
+                        aria-label={lang === "es" ? "Expandir habitación" : "Expand room"}
+                        className="ml-auto shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      >
                         <ChevronDown className="size-4" />
-                      ) : (
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex min-w-0 items-center gap-2 bg-surface-2 px-3 py-2.5">
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.quantity || ""}
+                        onFocus={(event) => event.currentTarget.select()}
+                        onClick={(event) => event.currentTarget.select()}
+                        onBlur={(event) => {
+                          const quantity = Number(event.currentTarget.value);
+                          if (!quantity || quantity < 1) {
+                            patchItem(item.id, { quantity: 1 });
+                          }
+                        }}
+                        onChange={(event) =>
+                          patchItem(item.id, {
+                            quantity: event.target.value === "" ? 0 : Number(event.target.value),
+                          })
+                        }
+                        aria-label={L.qty}
+                        className={cn(
+                          monoInput,
+                          "number-input-clean h-8 w-12 shrink-0 px-2 py-1 text-center font-semibold",
+                        )}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <SoftSelect
+                          value={item.roomType}
+                          onChange={(value) => {
+                            if (value === "__manage") {
+                              setShowRooms(true);
+                              return;
+                            }
+                            patchItem(item.id, { roomType: value });
+                          }}
+                          options={[
+                            ...roomTypes.map((room) => ({ value: room, label: room })),
+                            {
+                              value: "__manage",
+                              label:
+                                lang === "es"
+                                  ? "+ Gestionar/Editar habitaciones"
+                                  : "+ Manage/Edit room types",
+                            },
+                          ]}
+                          className="h-8 border-border bg-white px-2 py-1 font-semibold text-foreground shadow-none"
+                          aria-label={L.roomType}
+                        />
+                      </div>
+                      <SoftSelect
+                        value={item.accommodation}
+                        onChange={(value) =>
+                          patchItem(item.id, { accommodation: value as Accommodation })
+                        }
+                        options={hotel.accommodations.map((option) => ({
+                          value: option,
+                          label: option,
+                        }))}
+                        className="h-7 w-auto shrink-0 rounded-full border-entity-date/30 bg-entity-date-bg px-2 py-0.5 text-[11px] font-medium"
+                        aria-label={L.accommodation}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleItem(item.id)}
+                        aria-expanded="true"
+                        aria-label={lang === "es" ? "Contraer habitación" : "Collapse room"}
+                        className="ml-auto shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      >
                         <ChevronUp className="size-4" />
-                      )}
-                    </button>
-                  </div>
+                      </button>
+                    </div>
+                  )}
 
                   {!collapsedItems.has(item.id) && (
                     <div className="flex flex-col gap-2.5 border-t border-border p-3">
@@ -550,7 +572,7 @@ const toggleItem = (itemId: string) => {
                           onChange={(event) =>
                             patchItem(item.id, { guestName: event.target.value })
                           }
-                          placeholder={lang === "es" ? "Nombre del huésped" : "Guest name"}
+                          placeholder="Por confirmar"
                           className={inputCls}
                         />
                       </label>
