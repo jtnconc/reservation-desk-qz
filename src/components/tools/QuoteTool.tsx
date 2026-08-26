@@ -463,21 +463,21 @@ const toggleItem = (itemId: string) => {
               return (
                 <section key={item.id} className="overflow-hidden rounded-xl border border-border bg-surface">
                   {collapsedItems.has(item.id) ? (
-                    <div className="flex min-w-0 items-center gap-2 overflow-x-auto whitespace-nowrap bg-surface-2 px-3 py-2.5">
-                      <span className="shrink-0 text-[13px] font-semibold tabular-nums">
+                    <div className="flex min-w-0 flex-row items-center gap-2 overflow-x-auto whitespace-nowrap bg-surface-2 px-3 py-2.5">
+                      <span className="shrink-0 rounded-full border border-border bg-white px-2.5 py-0.5 text-[12px] font-semibold text-foreground tabular-nums">
                         {item.quantity || 1} {item.roomType}
                       </span>
-                      <span className="shrink-0 rounded-full border border-entity-date/30 bg-entity-date-bg px-2 py-0.5 text-[11px] font-medium">
+                      <span className="shrink-0 rounded-full border border-border bg-white px-2.5 py-0.5 text-[12px] font-medium text-foreground">
                         {item.accommodation}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">
-                        {(item.guestName ?? "").trim() || "Por confirmar"}
+                      <span className="shrink-0 rounded-full border border-border bg-white px-2.5 py-0.5 text-[12px] font-medium text-foreground">
+                        {L.guest}: {(item.guestName ?? "").trim() || (lang === "es" ? "Por confirmar" : "Pending")}
                       </span>
-                      <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
+                      <span className="shrink-0 rounded-full border border-border bg-white px-2.5 py-0.5 text-[12px] font-medium text-foreground tabular-nums">
                         {formatDate(item.arrival || quote.arrival, lang)} →{" "}
                         {formatDate(item.departure || quote.departure, lang)}
                       </span>
-                      <span className="shrink-0 text-[13px] font-semibold tabular-nums">
+                      <span className="shrink-0 rounded-full border border-border bg-white px-2.5 py-0.5 text-[12px] font-semibold text-foreground tabular-nums">
                         {money(lineSubtotal(item, nights))}
                       </span>
                       <button
@@ -548,7 +548,7 @@ const toggleItem = (itemId: string) => {
                           value: option,
                           label: option,
                         }))}
-                        className="h-7 w-auto shrink-0 rounded-full border-entity-date/30 bg-entity-date-bg px-2 py-0.5 text-[11px] font-medium"
+                        className="h-7 w-auto shrink-0 rounded-full border-gray-200 bg-white px-2 py-0.5 text-[11px] font-medium text-foreground"
                         aria-label={L.accommodation}
                       />
                       <input
@@ -556,7 +556,7 @@ const toggleItem = (itemId: string) => {
                         onChange={(event) =>
                           patchItem(item.id, { guestName: event.target.value })
                         }
-                        placeholder="Por confirmar"
+                        placeholder={lang === "es" ? "Huésped" : "Guest Name"}
                         aria-label={L.guest}
                         className={cn(inputCls, "h-8 min-w-0 flex-1 py-1")}
                       />
