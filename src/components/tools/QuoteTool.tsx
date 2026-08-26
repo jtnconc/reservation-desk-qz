@@ -491,7 +491,7 @@ const toggleItem = (itemId: string) => {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex min-w-0 items-center gap-2 bg-surface-2 px-3 py-2.5">
+                    <div className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto bg-surface-2 px-3 py-2.5">
                       <input
                         type="number"
                         min={1}
@@ -515,7 +515,7 @@ const toggleItem = (itemId: string) => {
                           "number-input-clean h-8 w-12 shrink-0 px-2 py-1 text-center font-semibold",
                         )}
                       />
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-36 flex-1">
                         <SoftSelect
                           value={item.roomType}
                           onChange={(value) => {
@@ -539,17 +539,28 @@ const toggleItem = (itemId: string) => {
                           aria-label={L.roomType}
                         />
                       </div>
-                      <SoftSelect
-                        value={item.accommodation}
-                        onChange={(value) =>
-                          patchItem(item.id, { accommodation: value as Accommodation })
+                      <div className="w-28 shrink-0">
+                        <SoftSelect
+                          value={item.accommodation}
+                          onChange={(value) =>
+                            patchItem(item.id, { accommodation: value as Accommodation })
+                          }
+                          options={hotel.accommodations.map((option) => ({
+                            value: option,
+                            label: option,
+                          }))}
+                          className="h-8 border-entity-date/30 bg-entity-date-bg px-2 py-1 text-[11px] font-medium"
+                          aria-label={L.accommodation}
+                        />
+                      </div>
+                      <input
+                        value={item.guestName ?? ""}
+                        onChange={(event) =>
+                          patchItem(item.id, { guestName: event.target.value })
                         }
-                        options={hotel.accommodations.map((option) => ({
-                          value: option,
-                          label: option,
-                        }))}
-                        className="h-7 w-auto shrink-0 rounded-full border-entity-date/30 bg-entity-date-bg px-2 py-0.5 text-[11px] font-medium"
-                        aria-label={L.accommodation}
+                        placeholder="Por confirmar"
+                        aria-label={L.guest}
+                        className={cn(inputCls, "h-8 min-w-36 flex-1 py-1")}
                       />
                       <button
                         type="button"
@@ -565,18 +576,6 @@ const toggleItem = (itemId: string) => {
 
                   {!collapsedItems.has(item.id) && (
                     <div className="flex flex-col gap-2.5 border-t border-border p-3">
-                      <label className="flex min-w-0 flex-col gap-1">
-                        <span className="label-xs">{L.guest}</span>
-                        <input
-                          value={item.guestName ?? ""}
-                          onChange={(event) =>
-                            patchItem(item.id, { guestName: event.target.value })
-                          }
-                          placeholder="Por confirmar"
-                          className={inputCls}
-                        />
-                      </label>
-
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <div className="flex min-w-[15rem] flex-1 items-center gap-2">
                           <DateRangeField
