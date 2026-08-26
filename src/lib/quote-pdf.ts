@@ -171,7 +171,7 @@ export function buildQuotePdf(quote: QuoteDoc, hotel: HotelTemplate, logoImage?:
     const descLines = doc.splitTextToSize(buildItemDescription(item, quote), cols[0]!.w);
     const rowGuest =
       (item.guestName ?? "").trim() ||
-      (quote.language === "es" ? "PENDIENTE" : "PENDING");
+      (quote.language === "es" ? "Por confirmar" : "Pending");
     const nameLines = doc.splitTextToSize(rowGuest, cols[1]!.w);
     const roomLines = doc.splitTextToSize(item.roomType, cols[3]!.w);
     const maxLines = Math.max(descLines.length, nameLines.length, roomLines.length, 1);

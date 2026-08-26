@@ -9,6 +9,7 @@ import {
   parseEntities,
 } from "@/lib/note-parser";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 import { registerNotesEditor } from "./notes-format";
 
 const HIGHLIGHT_PREFIX = "entity-";
@@ -153,6 +154,14 @@ export function NotesTool() {
               setPlain("");
               setNoteText("");
             }}
+            onPaste={(e) => {
+              // Clean external clipboard HTML so dangerous markup never lands
+              // in the editor (and thus never gets persisted or re-rendered).
+              const html = e.clipboardData.getData("text/html");
+              if (!html) return; // plain-text paste is inert; let it through
+              e.preventDefault();
+              document.execCommand("insertHTML", false, sanitizeHtml(html));
+            }}
             onInput={(e) => {
               const el = e.currentTarget;
               setPlain(el.textContent ?? "");
@@ -174,7 +183,7 @@ export function NotesTool() {
                   <p className="font-mono text-[10.5px] text-muted-foreground">{v.savedAt}</p>
                   <div
                     className="notes-rich mt-1 line-clamp-2 text-[12px]"
-                    dangerouslySetInnerHTML={{ __html: v.text }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(v.text) }}
                   />
                   <div className="mt-1.5 flex gap-2">
                     <button
@@ -193,7 +202,7 @@ export function NotesTool() {
                   {preview === v.id && (
                     <div
                       className="notes-rich mt-2 text-[11.5px] leading-snug"
-                      dangerouslySetInnerHTML={{ __html: v.text }}
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(v.text) }}
                     />
                   )}
                 </li>

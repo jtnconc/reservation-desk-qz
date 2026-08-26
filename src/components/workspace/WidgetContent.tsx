@@ -5,6 +5,7 @@ import type { ItemStatus, NoteRefItem, ReminderItem, Widget } from "@/workspace/
 import { DateField } from "@/components/common/DateField";
 import { TimeField } from "@/components/common/TimeField";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/sanitize-html";
 
 import { accentVar } from "./AccentControl";
 
@@ -487,7 +488,7 @@ function NotesContent({ widget }: { widget: Widget }) {
           >
             <span
               className="notes-rich min-w-0 flex-1 break-words text-[13px] leading-snug"
-              dangerouslySetInnerHTML={{ __html: n.text }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.text) }}
             />
             {n.pinned && (
               <Pin
