@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
-import { Copy, FileDown, ImageUp, Plus, Trash2, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  FileDown,
+  GripVertical,
+  ImageUp,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useWorkspace } from "@/workspace/store";
 import { HOTELS, getHotel } from "@/lib/hotels";
 import {
@@ -171,8 +181,18 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
   const lang = quote.language;
   const L = QUOTE_LABELS[lang];
   const { subtotal, tax, total } = quoteTotals(quote);
-  const [showDetails, setShowDetails] = useState(false);
-  const [showRooms, setShowRooms] = useState(false);
+const [showDetails, setShowDetails] = useState(false);
+const [showRooms, setShowRooms] = useState(false);
+const [collapsedItems, setCollapsedItems] = useState<Set<string>>(() => new Set());
+
+const toggleItem = (itemId: string) => {
+  setCollapsedItems((current) => {
+    const next = new Set(current);
+    if (next.has(itemId)) next.delete(itemId);
+    else next.add(itemId);
+    return next;
+  });
+};
 
   /** Room categories saved for a hotel + language, falling back to defaults. */
   const roomTypesFor = (hotelId: string, l: "es" | "en"): string[] => {
@@ -440,33 +460,40 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
             {quote.items.map((item, index) => {
               const nights = itemNights(item, quote);
               return (
-                <section key={item.id} className="overflow-hidden rounded-xl border border-border">
-                  <div className="grid gap-3 bg-surface-2 p-3 sm:grid-cols-2 xl:grid-cols-[5rem_1.4fr_1fr_9rem]">
-                    <label className="flex flex-col gap-1">
-                      <span className="label-xs">{L.qty}</span>
-                      <input
-                        type="number"
-                        min={1}
-                        value={item.quantity}
-                        onChange={(e) =>
-                          patchItem(item.id, { quantity: Math.max(1, Number(e.target.value)) })
-                        }
-                        className={cn(monoInput, "number-input-clean")}
-                      />
-                    </label>
-                    <label className="flex min-w-0 flex-col gap-1">
-                      <span className="label-xs">{L.roomType}</span>
+                <section key={item.id} className="overflow-hidden rounded-xl border border-border bg-surface">
+                  <div className="flex min-w-0 items-center gap-2 bg-surface-2 px-3 py-2.5">
+                    <GripVertical
+                      className="size-4 shrink-0 text-muted-foreground/60"
+                      aria-hidden="true"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onFocus={(event) => event.currentTarget.select()}
+                      onChange={(event) =>
+                        patchItem(item.id, {
+                          quantity: Math.max(1, Number(event.target.value)),
+                        })
+                      }
+                      aria-label={L.qty}
+                      className={cn(
+                        monoInput,
+                        "number-input-clean h-8 w-12 shrink-0 px-2 py-1 text-center font-semibold",
+                      )}
+                    />
+                    <div className="min-w-0 flex-1">
                       <SoftSelect
                         value={item.roomType}
-                        onChange={(v) => {
-                          if (v === "__manage") {
+                        onChange={(value) => {
+                          if (value === "__manage") {
                             setShowRooms(true);
                             return;
                           }
-                          patchItem(item.id, { roomType: v });
+                          patchItem(item.id, { roomType: value });
                         }}
                         options={[
-                          ...roomTypes.map((r) => ({ value: r, label: r })),
+                          ...roomTypes.map((room) => ({ value: room, label: room })),
                           {
                             value: "__manage",
                             label:
@@ -475,98 +502,148 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
                                 : "+ Manage/Edit room types",
                           },
                         ]}
+                        className="h-8 border-0 bg-transparent px-1 py-1 font-semibold shadow-none"
                         aria-label={L.roomType}
                       />
-                    </label>
-                    <label className="flex min-w-0 flex-col gap-1">
-                      <span className="label-xs">{L.guest}</span>
-                      <input
-                        value={item.guestName ?? ""}
-                        onChange={(e) => patchItem(item.id, { guestName: e.target.value })}
-                        placeholder={lang === "es" ? "PENDIENTE" : "PENDING"}
-                        className={inputCls}
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="label-xs">{L.accommodation}</span>
-                      <SoftSelect
-                        value={item.accommodation}
-                        onChange={(v) =>
-                          patchItem(item.id, { accommodation: v as Accommodation })
-                        }
-                        options={hotel.accommodations.map((a) => ({ value: a, label: a }))}
-                        aria-label={L.accommodation}
-                      />
-                    </label>
+                    </div>
+                    <SoftSelect
+                      value={item.accommodation}
+                      onChange={(value) =>
+                        patchItem(item.id, { accommodation: value as Accommodation })
+                      }
+                      options={hotel.accommodations.map((option) => ({
+                        value: option,
+                        label: option,
+                      }))}
+                      className="h-7 w-auto shrink-0 rounded-full border-entity-date/30 bg-entity-date-bg px-2 py-0.5 text-[11px] font-medium"
+                      aria-label={L.accommodation}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => toggleItem(item.id)}
+                      aria-expanded={!collapsedItems.has(item.id)}
+                      aria-label={
+                        collapsedItems.has(item.id)
+                          ? lang === "es"
+                            ? "Expandir habitación"
+                            : "Expand room"
+                          : lang === "es"
+                            ? "Contraer habitación"
+                            : "Collapse room"
+                      }
+                      className="ml-auto shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                    >
+                      {collapsedItems.has(item.id) ? (
+                        <ChevronDown className="size-4" />
+                      ) : (
+                        <ChevronUp className="size-4" />
+                      )}
+                    </button>
                   </div>
 
-                  <div className="grid items-end gap-3 border-t border-border p-3 sm:grid-cols-2 xl:grid-cols-[minmax(14rem,1.5fr)_5rem_7rem_5rem_8rem_2rem]">
-                    <div className="flex min-w-0 flex-col gap-1">
-                      <span className="label-xs">{lang === "es" ? "Estadía" : "Stay"}</span>
-                      <DateRangeField
-                        size="sm"
-                        start={item.arrival || quote.arrival}
-                        end={item.departure || quote.departure}
-                        startLabel={lang === "es" ? "Llegada" : "Arrival"}
-                        endLabel={lang === "es" ? "Salida" : "Departure"}
-                        onChange={({ start, end }) =>
-                          setItemDates(item.id, {
-                            arrival: start ?? item.arrival ?? quote.arrival,
-                            departure: end ?? "",
-                          })
-                        }
-                        renderField={(text, control) => (
-                          <div key={text} className="min-w-0 flex-1">
-                            {control}
-                          </div>
-                        )}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="label-xs">{L.rn}</span>
-                      <span className="flex min-h-8 items-center tabular-nums text-[13px]">{nights}</span>
-                    </div>
-                    <label className="flex flex-col gap-1">
-                      <span className="label-xs">{L.rate}</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.ratePerNight || ""}
-                        placeholder="0"
-                        onChange={(e) =>
-                          patchItem(item.id, { ratePerNight: Number(e.target.value) })
-                        }
-                        className={cn(rateInput, "number-input-clean")}
-                      />
-                    </label>
-                    <div className="flex flex-col gap-1">
-                      <span className="label-xs">ITBMS</span>
-                      <span className="flex min-h-8 items-center">
-                        <Switch
-                          checked={item.itbms}
-                          onCheckedChange={(v) => patchItem(item.id, { itbms: v })}
-                          aria-label="Toggle ITBMS"
+                  {!collapsedItems.has(item.id) && (
+                    <div className="flex flex-col gap-2.5 border-t border-border p-3">
+                      <label className="flex min-w-0 flex-col gap-1">
+                        <span className="label-xs">{L.guest}</span>
+                        <input
+                          value={item.guestName ?? ""}
+                          onChange={(event) =>
+                            patchItem(item.id, { guestName: event.target.value })
+                          }
+                          placeholder={lang === "es" ? "Nombre del huésped" : "Guest name"}
+                          className={inputCls}
                         />
-                      </span>
+                      </label>
+
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <div className="flex min-w-[15rem] flex-1 items-center gap-2">
+                          <DateRangeField
+                            size="sm"
+                            start={item.arrival || quote.arrival}
+                            end={item.departure || quote.departure}
+                            startLabel={lang === "es" ? "Llegada" : "Arrival"}
+                            endLabel={lang === "es" ? "Salida" : "Departure"}
+                            onChange={({ start, end }) =>
+                              setItemDates(item.id, {
+                                arrival: start ?? item.arrival ?? quote.arrival,
+                                departure: end ?? "",
+                              })
+                            }
+                            renderField={(text, control) => (
+                              <div key={text} className="contents">
+                                <div className="min-w-0 flex-1">{control}</div>
+                                {text === (lang === "es" ? "Llegada" : "Arrival") && (
+                                  <span
+                                    className="shrink-0 text-[12px] text-muted-foreground"
+                                    aria-hidden="true"
+                                  >
+                                    →
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          />
+                        </div>
+                        <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[11px] font-medium text-secondary-foreground tabular-nums">
+                          {nights} {lang === "es" ? (nights === 1 ? "noche" : "noches") : nights === 1 ? "night" : "nights"}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-end gap-3 border-t border-border/70 pt-2.5">
+                        <label className="flex min-w-[9rem] flex-1 flex-col gap-1 sm:max-w-44">
+                          <span className="label-xs">{L.rate}</span>
+                          <div className="relative">
+                            <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-[12px] text-muted-foreground">$</span>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={item.ratePerNight || ""}
+                              placeholder="0.00"
+                              onFocus={(event) => event.currentTarget.select()}
+                              onChange={(event) =>
+                                patchItem(item.id, {
+                                  ratePerNight: Number(event.target.value),
+                                })
+                              }
+                              className={cn(
+                                rateInput,
+                                "number-input-clean h-8 py-1 pl-6",
+                              )}
+                            />
+                          </div>
+                        </label>
+                        <label className="flex shrink-0 flex-col gap-1">
+                          <span className="label-xs">ITBMS</span>
+                          <span className="flex h-8 items-center">
+                            <Switch
+                              checked={item.itbms}
+                              onCheckedChange={(value) =>
+                                patchItem(item.id, { itbms: value })
+                              }
+                              aria-label="Toggle ITBMS"
+                            />
+                          </span>
+                        </label>
+                        <div className="ml-auto flex shrink-0 flex-col items-end gap-1">
+                          <span className="label-xs">{L.subtotal}</span>
+                          <span className="flex h-8 items-center tabular-nums text-[14px] font-semibold">
+                            {money(lineSubtotal(item, nights))}
+                          </span>
+                        </div>
+                        <div className="flex h-8 items-center">
+                          {quote.items.length > 1 && (
+                            <button
+                              aria-label={`Remove row ${index + 1}`}
+                              onClick={() => removeItem(item.id)}
+                              className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="label-xs">{L.subtotal}</span>
-                      <span className="flex min-h-8 items-center tabular-nums text-[13px] font-medium">
-                        {money(lineSubtotal(item, nights))}
-                      </span>
-                    </div>
-                    <div className="flex min-h-8 items-center justify-end">
-                      {quote.items.length > 1 && (
-                        <button
-                          aria-label={`Remove row ${index + 1}`}
-                          onClick={() => removeItem(item.id)}
-                          className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  )}
                 </section>
               );
             })}

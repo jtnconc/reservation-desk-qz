@@ -89,9 +89,12 @@ export function buildQuotePdf(quote: QuoteDoc, hotel: HotelTemplate, logoImage?:
     logoH = 18;
   }
 
-  // Right-aligned header block: issue date, then address and phone directly below it.
+  // Right-aligned header block: lower the date slightly, then stack contact details
+  // so the final address baseline lines up with the bottom edge of the logo.
   const rightBlockWidth = 260;
-  const dateY = y + 8;
+  const lineHeight = 10;
+  const logoBottom = y + logoH;
+  const dateY = y + 12;
   doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(60, 64, 74);
   doc.text(formatDate(quote.issueDate, quote.language), W - M, dateY, { align: "right" });
 
@@ -104,13 +107,14 @@ export function buildQuotePdf(quote: QuoteDoc, hotel: HotelTemplate, logoImage?:
   if (headerAddress) {
     doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(115, 120, 132);
     const addressLines = doc.splitTextToSize(headerAddress, rightBlockWidth);
-    const addressY = dateY + 14;
+    const alignedAddressY = logoBottom - (addressLines.length - 1) * lineHeight;
+    const addressY = Math.max(dateY + 14, alignedAddressY);
     doc.text(addressLines, W - M, addressY, { align: "right" });
-    rightBlockBottom = addressY + (addressLines.length - 1) * 10;
+    rightBlockBottom = addressY + (addressLines.length - 1) * lineHeight;
   }
 
   // Place the divider below whichever side of the header is taller.
-  y = Math.max(y + logoH, rightBlockBottom) + 12;
+  y = Math.max(logoBottom, rightBlockBottom) + 12;
   doc.setDrawColor(...mix(brand, 0.35)).setLineWidth(1).line(M, y + 8, W - M, y + 8);
   doc.setLineWidth(0.5);
   y += 8 + 52;
