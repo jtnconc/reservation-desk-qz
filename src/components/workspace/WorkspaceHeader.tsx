@@ -104,8 +104,8 @@ export function WorkspaceHeader({
   }, [query, widgets, quote, quoteHistory, openWidget, openTool, loadQuote]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-[1240px] flex-row flex-nowrap items-center gap-3 whitespace-nowrap px-5">
+    <header className="z-30 w-full shrink-0 bg-transparent">
+      <div className="mx-auto flex h-14 w-full max-w-[1240px] flex-row flex-nowrap items-center gap-3 overflow-x-auto whitespace-nowrap px-5">
         <ToolSwitcher />
 
         {mode === "tool" && activeTool === "notes" && <NotesToolbar />}
@@ -118,7 +118,7 @@ export function WorkspaceHeader({
           />
         )}
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="sticky right-0 ml-auto flex shrink-0 items-center gap-1 bg-background/95 pl-2">
           <Popover open={searchOpen} onOpenChange={setSearchOpen}>
             <PopoverTrigger className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
               <Search className="size-[17px]" />

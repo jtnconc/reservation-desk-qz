@@ -313,11 +313,11 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
   };
 
   return (
-    <div className="flex h-full min-h-0 gap-4">
-      <div className="min-h-0 flex-1 overflow-auto pr-1">
-        <article className="rounded-2xl border border-border bg-surface p-6">
-          <header className="flex items-start justify-between gap-4 border-b border-border pb-4">
-            <div className="flex items-center gap-3">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-4 lg:flex-row">
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto pr-1">
+        <article className="min-w-0 rounded-2xl border border-border bg-surface p-4 sm:p-6">
+          <header className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
+            <div className="flex min-w-0 flex-wrap items-center gap-3">
               <div className="group relative size-10 shrink-0">
                 {logo ? (
                   <img
@@ -430,8 +430,8 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
           <h3 className="text-[15px] font-semibold">{L.title}</h3>
 
 
-          <div className="mt-4 overflow-hidden rounded-xl border border-border">
-            <table className="w-full text-left">
+          <div className="mt-4 w-full overflow-x-auto overscroll-x-contain rounded-xl border border-border [scrollbar-gutter:stable]">
+            <table className="min-w-[1120px] w-full text-left">
               <thead className="bg-surface-2">
                 <tr>
                   {[
@@ -735,7 +735,7 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
       </div>
 
       {showHistory && (
-        <aside className="w-64 shrink-0 overflow-auto border-l border-border pl-4">
+        <aside className="max-h-64 w-full shrink-0 overflow-auto border-t border-border pt-4 lg:max-h-none lg:w-64 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
           <p className="label-xs mb-2">{lang === "es" ? "Historial" : "History"}</p>
           {quoteHistory.length === 0 && (
             <p className="text-[12px] text-muted-foreground">

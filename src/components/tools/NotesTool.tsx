@@ -107,8 +107,8 @@ export function NotesTool() {
   }, {});
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex min-h-0 flex-1 gap-4">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
         <div
           className="notes-paper relative min-h-[280px] flex-1 overflow-y-auto rounded-xl"
           onClick={() => editorRef.current?.focus()}
@@ -203,8 +203,8 @@ export function NotesTool() {
         )}
       </div>
 
-      <footer className="mt-1 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-2">
-        <div className="flex flex-wrap items-center gap-2">
+      <footer className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border pt-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
           {Object.entries(entityCounts).map(([type, count]) => (
             <span
               key={type}
@@ -217,10 +217,8 @@ export function NotesTool() {
             </span>
           ))}
         </div>
-      </footer>
 
-      <div className="mt-2 flex items-center justify-end gap-3">
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             onClick={() => {
               const el = editorRef.current;
@@ -248,7 +246,7 @@ export function NotesTool() {
             <History className="size-[15px]" />
           </button>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }

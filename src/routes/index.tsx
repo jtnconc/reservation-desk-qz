@@ -35,14 +35,14 @@ function WorkspacePage() {
 
   return (
     <WorkspaceProvider>
-      <div className="min-h-screen bg-background">
+      <div className="flex min-h-screen w-full flex-col bg-background">
         <WorkspaceHeader
           quotePreview={quotePreview}
           onToggleQuotePreview={() => setQuotePreview((v) => !v)}
           quoteHistoryOpen={quoteHistory}
           onToggleQuoteHistory={() => setQuoteHistory((v) => !v)}
         />
-        <main className="mx-auto max-w-[1240px] px-5 pb-3 pt-0">
+        <main className="mx-auto flex w-full max-w-[1240px] min-h-0 flex-1 flex-col px-5 pb-3 pt-0">
           <Workspace quotePreview={quotePreview} quoteHistory={quoteHistory} />
         </main>
         <Toaster position="bottom-right" />
@@ -62,19 +62,19 @@ function Workspace({
   const toolMode = mode === "tool";
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-5">
       {/* Tool area — expands in tool mode, retracts fully in widget mode */}
       <section
         className={cn(
-          "desk-panel overflow-hidden transition-all duration-500 ease-[var(--ease-desk)]",
+          "desk-panel min-w-0 overflow-hidden transition-all duration-500 ease-[var(--ease-desk)]",
           toolMode
-            ? "min-h-[calc(100vh-6.5rem)] p-6 opacity-100"
+            ? "flex min-h-[calc(100vh-6.5rem)] flex-1 flex-col p-4 opacity-100 sm:p-6"
             : "pointer-events-none max-h-0 border-0 p-0 opacity-0 shadow-none",
         )}
         aria-hidden={!toolMode}
       >
         {toolMode && (
-          <div className="flex min-h-[calc(100vh-9.5rem)] flex-col">
+          <div className="flex min-h-0 flex-1 flex-col">
             {activeTool === "notes" && <NotesTool />}
             {activeTool === "rates" && <RatesTool />}
             {activeTool === "quote" && (
