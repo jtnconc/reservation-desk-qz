@@ -1,0 +1,210 @@
+export type ToolId = "notes" | "quote" | "rates";
+
+export type WidgetType =
+  | "reminders"
+  | "contacts"
+  | "notes"
+  | "information"
+  | "tasks"
+  /** Independent sticky note extracted from the main Notes widget. */
+  | "sticky";
+
+/** Only three sizes are allowed in the controlled 4-column grid. */
+export type WidgetSize = "1x1" | "1x2" | "2x1";
+
+export type WidgetDisplayState = "minimized" | "expanded";
+
+/** Predefined, subtle widget accent palette. */
+export type WidgetAccent =
+  | "neutral"
+  | "blue"
+  | "green"
+  | "yellow"
+  | "orange"
+  | "red"
+  | "purple";
+
+export type ItemStatus = "active" | "completed" | "archived";
+
+/** Curated icon set a widget can be customized with. */
+export type WidgetIconName =
+  | "bell"
+  | "check"
+  | "note"
+  | "info"
+  | "users"
+  | "calendar"
+  | "phone"
+  | "plane"
+  | "key"
+  | "pin"
+  | "coffee"
+  | "briefcase"
+  | "bookmark";
+
+export interface ReminderItem {
+  id: string;
+  title: string;
+  /** ISO date (YYYY-MM-DD) — legacy values may include a trailing time. */
+  date: string;
+  /** 24h time (HH:MM) */
+  time?: string;
+  status?: ItemStatus;
+  done?: boolean;
+}
+
+export interface ContactItem {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+}
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  /** "open"/"done" kept for backwards compatibility with stored data */
+  status: "open" | "done" | "active" | "completed" | "archived";
+}
+
+export interface InformationItem {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface NoteRefItem {
+  id: string;
+  text: string;
+  /** pinned notes render at the top of the NOTES widget */
+  pinned?: boolean;
+}
+
+export type WidgetContent =
+  | { kind: "reminders"; items: ReminderItem[] }
+  | { kind: "contacts"; items: ContactItem[] }
+  | { kind: "tasks"; items: TaskItem[] }
+  | { kind: "information"; items: InformationItem[] }
+  | { kind: "notes"; items: NoteRefItem[] };
+
+export interface Widget {
+  id: string;
+  type: WidgetType;
+  title: string;
+  /** order position inside the controlled grid (dense flow) */
+  position: number;
+  width: 1 | 2;
+  height: 1 | 2;
+  display: WidgetDisplayState;
+  /** predefined subtle accent color for this widget */
+  accent?: WidgetAccent;
+  /** customized header icon (falls back to the type default) */
+  icon?: WidgetIconName;
+  /** ultra-light pastel background tint (sticky notes only) */
+  tint?: WidgetAccent;
+  content: WidgetContent;
+}
+
+export interface NoteVersion {
+  id: string;
+  text: string;
+  savedAt: string;
+}
+
+export type QuoteLanguage = "es" | "en";
+
+export type Accommodation = "Single" | "Double" | "Triple" | "Quadruple";
+
+/** Greeting treatment used in the PDF salutation. */
+export type Salutation = "Estimado" | "Estimada";
+
+/** Editable per-hotel detail texts persisted per hotel + language. */
+export interface HotelDetails {
+  intro: string;
+  includedServices: string[];
+  hotelInfo: string;
+  checkIn: string;
+  checkOut: string;
+  signature: string;
+}
+
+export interface QuoteLineItem {
+  id: string;
+  quantity: number;
+  roomType: string;
+  accommodation: Accommodation;
+  /** Guest name for this specific room row */
+  guestName?: string;
+  /** Per-row check-in (ISO). Falls back to the quote-level arrival. */
+  arrival?: string;
+  /** Per-row check-out (ISO). Falls back to the quote-level departure. */
+  departure?: string;
+  ratePerNight: number;
+  /** ITBMS applied to this item's subtotal */
+  itbms: boolean;
+}
+
+
+export interface QuoteDoc {
+  id: string;
+  hotelId: string;
+  language: QuoteLanguage;
+  /** ISO date, defaults to today */
+  issueDate: string;
+  arrival: string;
+  departure: string;
+  nights: number;
+  /** true when the user typed nights manually instead of deriving them */
+  nightsOverride: boolean;
+  /** "Estimado" / "Estimada" treatment for the recipient */
+  salutation?: Salutation;
+  recipient: string;
+  company: string;
+  guest: string;
+  intro: string;
+  description: string;
+  descriptionEdited: boolean;
+  items: QuoteLineItem[];
+  /** ITBMS percentage (0.1 = 10%) */
+  itbmsRate: number;
+  includedServices: string[];
+  hotelInfo: string;
+  checkIn: string;
+  checkOut: string;
+  signature: string;
+  updatedAt: string;
+}
+
+/** Per-language editable text content of a hotel. */
+export interface HotelLangContent {
+  intro: string;
+  descriptionTemplate: string;
+  includedServices: string[];
+  hotelInfo: string;
+  signature: string;
+}
+
+export interface HotelTemplate {
+  id: string;
+  name: string;
+  address: string;
+  /** Optional bundled or uploaded logo image (URL or data URL). */
+  logoUrl?: string;
+  accent: string;
+  /** complementary/secondary brand color for details and borders */
+  secondary?: string;
+  /** pale brand-derived background used for cards in the PDF */
+  tint?: string;
+  roomTypes: string[];
+  accommodations: Accommodation[];
+  checkIn: string;
+  checkOut: string;
+  taxRate: number;
+  taxLabel: string;
+  es: HotelLangContent;
+  en: HotelLangContent;
+}
+
+
+export type WorkspaceMode = "tool" | "widgets";
