@@ -84,7 +84,7 @@ export function RatesTool() {
             value={regularRate || ""}
             placeholder="0"
             onChange={(e) => setRegularRate(Number(e.target.value))}
-            className={rateInputCls}
+            className={cn(rateInputCls, "number-input-clean")}
           />
         </Field>
         <Field label="Pax extra">
@@ -94,7 +94,7 @@ export function RatesTool() {
             value={paxExtra || ""}
             placeholder="0"
             onChange={(e) => setPaxExtra(Number(e.target.value))}
-            className={inputCls}
+            className={cn(inputCls, "number-input-clean")}
           />
         </Field>
         <Field label="Pax extra rate">
@@ -102,7 +102,10 @@ export function RatesTool() {
             type="number"
             value={paxExtraRate}
             readOnly
-            className={cn(inputCls, "cursor-default bg-surface-2 text-muted-foreground")}
+            className={cn(
+              inputCls,
+              "number-input-clean cursor-default bg-surface-2 text-muted-foreground",
+            )}
           />
         </Field>
       </div>

@@ -134,6 +134,17 @@
   color: var(--muted-foreground);
 }
 
+/* Number inputs without browser spinner arrows */
+.number-input-clean {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.number-input-clean::-webkit-outer-spin-button,
+.number-input-clean::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* Notes editor: clean blank canvas */
 @utility notes-paper {
   background-color: var(--surface);

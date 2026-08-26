@@ -63,7 +63,7 @@ export function WidgetGrid() {
 
   if (minimized)
     return (
-      <div className="flex w-full min-w-0 flex-row flex-nowrap gap-2 overflow-x-auto whitespace-nowrap pb-1">
+      <div className="flex w-full min-w-0 flex-row flex-nowrap gap-2 overflow-x-auto whitespace-nowrap">
         {ordered.map((w) => {
           const Icon = widgetIcon(w.type, w.icon);
           const pulse = pulses[w.id];

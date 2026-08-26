@@ -359,7 +359,13 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
                 <SoftSelect
                   value={quote.hotelId}
                   onChange={switchHotel}
-                  options={HOTELS.map((h) => ({ value: h.id, label: h.name }))}
+                  options={HOTELS.map((h) => ({
+                    value: h.id,
+                    label:
+                      h.id === "marriott-finisterre"
+                        ? "Marriott Executive Apartments"
+                        : h.name,
+                  }))}
                   aria-label="Hotel"
                   className="w-auto min-w-[180px] max-w-[280px] rounded-full px-3 py-1.5 text-[12px]"
                 />
@@ -430,34 +436,14 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
           <h3 className="text-[15px] font-semibold">{L.title}</h3>
 
 
-          <div className="mt-4 w-full overflow-x-auto overscroll-x-contain rounded-xl border border-border [scrollbar-gutter:stable]">
-            <table className="min-w-[1120px] w-full text-left">
-              <thead className="bg-surface-2">
-                <tr>
-                  {[
-                    L.qty,
-                    L.roomType,
-                    L.guest,
-                    L.accommodation,
-                    lang === "es" ? "Estadía" : "Stay",
-                    L.rn,
-                    L.rate,
-                    "ITBMS",
-                    L.subtotal,
-                    "",
-
-                  ].map((h, i) => (
-                    <th key={i} className="label-xs px-2.5 py-2">
-                      {h}
-                    </th>
-                  ))}
-
-                </tr>
-              </thead>
-              <tbody>
-                {quote.items.map((item) => (
-                  <tr key={item.id} className="border-t border-border">
-                    <td className="w-16 px-2.5 py-2">
+          <div className="mt-4 flex flex-col gap-3">
+            {quote.items.map((item, index) => {
+              const nights = itemNights(item, quote);
+              return (
+                <section key={item.id} className="overflow-hidden rounded-xl border border-border">
+                  <div className="grid gap-3 bg-surface-2 p-3 sm:grid-cols-2 xl:grid-cols-[5rem_1.4fr_1fr_9rem]">
+                    <label className="flex flex-col gap-1">
+                      <span className="label-xs">{L.qty}</span>
                       <input
                         type="number"
                         min={1}
@@ -465,10 +451,11 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
                         onChange={(e) =>
                           patchItem(item.id, { quantity: Math.max(1, Number(e.target.value)) })
                         }
-                        className={monoInput}
+                        className={cn(monoInput, "number-input-clean")}
                       />
-                    </td>
-                    <td className="px-2.5 py-2">
+                    </label>
+                    <label className="flex min-w-0 flex-col gap-1">
+                      <span className="label-xs">{L.roomType}</span>
                       <SoftSelect
                         value={item.roomType}
                         onChange={(v) => {
@@ -490,17 +477,18 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
                         ]}
                         aria-label={L.roomType}
                       />
-                    </td>
-
-                    <td className="px-2.5 py-2">
+                    </label>
+                    <label className="flex min-w-0 flex-col gap-1">
+                      <span className="label-xs">{L.guest}</span>
                       <input
                         value={item.guestName ?? ""}
                         onChange={(e) => patchItem(item.id, { guestName: e.target.value })}
                         placeholder={lang === "es" ? "PENDIENTE" : "PENDING"}
                         className={inputCls}
                       />
-                    </td>
-                    <td className="w-32 px-2.5 py-2">
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="label-xs">{L.accommodation}</span>
                       <SoftSelect
                         value={item.accommodation}
                         onChange={(v) =>
@@ -509,33 +497,37 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
                         options={hotel.accommodations.map((a) => ({ value: a, label: a }))}
                         aria-label={L.accommodation}
                       />
-                    </td>
-                    <td className="w-[13.5rem] px-2.5 py-2">
-                      <div className="flex items-center gap-1.5">
-                        <DateRangeField
-                          size="sm"
-                          start={item.arrival || quote.arrival}
-                          end={item.departure || quote.departure}
-                          startLabel={lang === "es" ? "Llegada" : "Arrival"}
-                          endLabel={lang === "es" ? "Salida" : "Departure"}
-                          onChange={({ start, end }) =>
-                            setItemDates(item.id, {
-                              arrival: start ?? item.arrival ?? quote.arrival,
-                              departure: end ?? "",
-                            })
-                          }
-                          renderField={(text, control) => (
-                            <div key={text} className="min-w-0 flex-1">
-                              {control}
-                            </div>
-                          )}
-                        />
-                      </div>
-                    </td>
-                    <td className="w-12 px-2.5 py-2 tabular-nums text-[13px]">
-                      {itemNights(item, quote)}
-                    </td>
-                    <td className="w-24 px-2.5 py-2">
+                    </label>
+                  </div>
+
+                  <div className="grid items-end gap-3 border-t border-border p-3 sm:grid-cols-2 xl:grid-cols-[minmax(14rem,1.5fr)_5rem_7rem_5rem_8rem_2rem]">
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <span className="label-xs">{lang === "es" ? "Estadía" : "Stay"}</span>
+                      <DateRangeField
+                        size="sm"
+                        start={item.arrival || quote.arrival}
+                        end={item.departure || quote.departure}
+                        startLabel={lang === "es" ? "Llegada" : "Arrival"}
+                        endLabel={lang === "es" ? "Salida" : "Departure"}
+                        onChange={({ start, end }) =>
+                          setItemDates(item.id, {
+                            arrival: start ?? item.arrival ?? quote.arrival,
+                            departure: end ?? "",
+                          })
+                        }
+                        renderField={(text, control) => (
+                          <div key={text} className="min-w-0 flex-1">
+                            {control}
+                          </div>
+                        )}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="label-xs">{L.rn}</span>
+                      <span className="flex min-h-8 items-center tabular-nums text-[13px]">{nights}</span>
+                    </div>
+                    <label className="flex flex-col gap-1">
+                      <span className="label-xs">{L.rate}</span>
                       <input
                         type="number"
                         step="0.01"
@@ -544,35 +536,40 @@ export function QuoteTool({ showPreview = false, showHistory = false }: QuoteToo
                         onChange={(e) =>
                           patchItem(item.id, { ratePerNight: Number(e.target.value) })
                         }
-                        className={rateInput}
+                        className={cn(rateInput, "number-input-clean")}
                       />
-                    </td>
-                    <td className="w-16 px-2.5 py-2">
-                      <Switch
-                        checked={item.itbms}
-                        onCheckedChange={(v) => patchItem(item.id, { itbms: v })}
-                        aria-label="Toggle ITBMS"
-                      />
-                    </td>
-                    <td className="px-2.5 py-2 tabular-nums text-[13px]">
-                      {money(lineSubtotal(item, itemNights(item, quote)))}
-                    </td>
-
-                    <td className="w-8 px-1 py-2">
+                    </label>
+                    <div className="flex flex-col gap-1">
+                      <span className="label-xs">ITBMS</span>
+                      <span className="flex min-h-8 items-center">
+                        <Switch
+                          checked={item.itbms}
+                          onCheckedChange={(v) => patchItem(item.id, { itbms: v })}
+                          aria-label="Toggle ITBMS"
+                        />
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="label-xs">{L.subtotal}</span>
+                      <span className="flex min-h-8 items-center tabular-nums text-[13px] font-medium">
+                        {money(lineSubtotal(item, nights))}
+                      </span>
+                    </div>
+                    <div className="flex min-h-8 items-center justify-end">
                       {quote.items.length > 1 && (
                         <button
-                          aria-label="Remove row"
+                          aria-label={`Remove row ${index + 1}`}
                           onClick={() => removeItem(item.id)}
-                          className="text-muted-foreground transition-colors hover:text-foreground"
+                          className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                         >
                           <Trash2 className="size-3.5" />
                         </button>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
           </div>
 
           <div className="mt-2 flex items-center justify-between">
