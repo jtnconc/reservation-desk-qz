@@ -4,10 +4,8 @@ import { WorkspaceProvider, useWorkspace } from "@/workspace/store";
 import { WorkspaceHeader } from "@/components/workspace/WorkspaceHeader";
 import { WidgetGrid } from "@/components/workspace/WidgetGrid";
 import { NotesTool } from "@/components/tools/NotesTool";
-import { NotesToolbar } from "@/components/tools/NotesToolbar";
 import { RatesTool } from "@/components/tools/RatesTool";
 import { QuoteTool } from "@/components/tools/QuoteTool";
-import { QuoteToolbar } from "@/components/tools/QuoteToolbar";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -32,12 +30,20 @@ export const Route = createFileRoute("/")({
 });
 
 function WorkspacePage() {
+  const [quotePreview, setQuotePreview] = useState(false);
+  const [quoteHistory, setQuoteHistory] = useState(false);
+
   return (
     <WorkspaceProvider>
       <div className="min-h-screen bg-background">
-        <WorkspaceHeader />
-        <main className="mx-auto max-w-[1240px] px-5 py-3">
-          <Workspace />
+        <WorkspaceHeader
+          quotePreview={quotePreview}
+          onToggleQuotePreview={() => setQuotePreview((v) => !v)}
+          quoteHistoryOpen={quoteHistory}
+          onToggleQuoteHistory={() => setQuoteHistory((v) => !v)}
+        />
+        <main className="mx-auto max-w-[1240px] px-5 pb-3 pt-0">
+          <Workspace quotePreview={quotePreview} quoteHistory={quoteHistory} />
         </main>
         <Toaster position="bottom-right" />
       </div>
@@ -45,52 +51,30 @@ function WorkspacePage() {
   );
 }
 
-function Workspace() {
+function Workspace({
+  quotePreview,
+  quoteHistory,
+}: {
+  quotePreview: boolean;
+  quoteHistory: boolean;
+}) {
   const { mode, activeTool } = useWorkspace();
   const toolMode = mode === "tool";
-  const [quotePreview, setQuotePreview] = useState(false);
-  const [quoteHistory, setQuoteHistory] = useState(false);
 
   return (
     <div className="flex flex-col gap-5">
-      <div
-        className={cn(
-          "flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-[var(--ease-desk)]",
-          toolMode && activeTool === "notes"
-            ? "max-w-[280px] translate-x-0 opacity-100"
-            : "max-w-0 -translate-x-2 opacity-0 pointer-events-none",
-        )}
-      >
-        <NotesToolbar />
-      </div>
-      <div
-        className={cn(
-          "flex items-center gap-1.5 overflow-hidden transition-all duration-300 ease-[var(--ease-desk)]",
-          toolMode && activeTool === "quote"
-            ? "max-w-[220px] translate-x-0 opacity-100"
-            : "max-w-0 -translate-x-2 opacity-0 pointer-events-none",
-        )}
-      >
-        <QuoteToolbar
-          preview={quotePreview}
-          onTogglePreview={() => setQuotePreview((v) => !v)}
-          history={quoteHistory}
-          onToggleHistory={() => setQuoteHistory((v) => !v)}
-        />
-      </div>
-
       {/* Tool area — expands in tool mode, retracts fully in widget mode */}
       <section
         className={cn(
           "desk-panel overflow-hidden transition-all duration-500 ease-[var(--ease-desk)]",
           toolMode
-            ? "min-h-[540px] p-6 opacity-100"
+            ? "min-h-[calc(100vh-6.5rem)] p-6 opacity-100"
             : "pointer-events-none max-h-0 border-0 p-0 opacity-0 shadow-none",
         )}
         aria-hidden={!toolMode}
       >
         {toolMode && (
-          <div className="flex h-[520px] flex-col">
+          <div className="flex min-h-[calc(100vh-9.5rem)] flex-col">
             {activeTool === "notes" && <NotesTool />}
             {activeTool === "rates" && <RatesTool />}
             {activeTool === "quote" && (

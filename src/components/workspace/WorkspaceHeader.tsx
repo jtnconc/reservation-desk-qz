@@ -25,8 +25,22 @@ interface SearchHit {
   onOpen: () => void;
 }
 
-export function WorkspaceHeader() {
+interface WorkspaceHeaderProps {
+  quotePreview: boolean;
+  onToggleQuotePreview: () => void;
+  quoteHistoryOpen: boolean;
+  onToggleQuoteHistory: () => void;
+}
+
+export function WorkspaceHeader({
+  quotePreview,
+  onToggleQuotePreview,
+  quoteHistoryOpen,
+  onToggleQuoteHistory,
+}: WorkspaceHeaderProps) {
   const {
+    mode,
+    activeTool,
     widgets,
     openWidget,
     openTool,
@@ -91,10 +105,20 @@ export function WorkspaceHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/80 bg-background/85 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-[1240px] items-center justify-between px-5">
+      <div className="mx-auto flex h-14 max-w-[1240px] flex-row flex-nowrap items-center gap-3 whitespace-nowrap px-5">
         <ToolSwitcher />
 
-        <div className="flex items-center gap-1">
+        {mode === "tool" && activeTool === "notes" && <NotesToolbar />}
+        {mode === "tool" && activeTool === "quote" && (
+          <QuoteToolbar
+            preview={quotePreview}
+            onTogglePreview={onToggleQuotePreview}
+            history={quoteHistoryOpen}
+            onToggleHistory={onToggleQuoteHistory}
+          />
+        )}
+
+        <div className="ml-auto flex items-center gap-1">
           <Popover open={searchOpen} onOpenChange={setSearchOpen}>
             <PopoverTrigger className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
               <Search className="size-[17px]" />
