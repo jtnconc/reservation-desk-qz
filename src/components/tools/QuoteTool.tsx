@@ -551,6 +551,15 @@ const toggleItem = (itemId: string) => {
                         className="h-7 w-auto shrink-0 rounded-full border-entity-date/30 bg-entity-date-bg px-2 py-0.5 text-[11px] font-medium"
                         aria-label={L.accommodation}
                       />
+                      <input
+                        value={item.guestName ?? ""}
+                        onChange={(event) =>
+                          patchItem(item.id, { guestName: event.target.value })
+                        }
+                        placeholder="Por confirmar"
+                        aria-label={L.guest}
+                        className={cn(inputCls, "h-8 min-w-0 flex-1 py-1")}
+                      />
                       <button
                         type="button"
                         onClick={() => toggleItem(item.id)}
@@ -565,18 +574,6 @@ const toggleItem = (itemId: string) => {
 
                   {!collapsedItems.has(item.id) && (
                     <div className="flex flex-col gap-2.5 border-t border-border p-3">
-                      <label className="flex min-w-0 flex-col gap-1">
-                        <span className="label-xs">{L.guest}</span>
-                        <input
-                          value={item.guestName ?? ""}
-                          onChange={(event) =>
-                            patchItem(item.id, { guestName: event.target.value })
-                          }
-                          placeholder="Por confirmar"
-                          className={inputCls}
-                        />
-                      </label>
-
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <div className="flex min-w-[15rem] flex-1 items-center gap-2">
                           <DateRangeField
