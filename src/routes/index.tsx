@@ -62,7 +62,7 @@ function Workspace({
   const toolMode = mode === "tool";
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col gap-3">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-2">
       {/* Tool area — expands in tool mode, retracts fully in widget mode */}
       <section
         className={cn(
