@@ -61,11 +61,25 @@ export interface ContactItem {
   company?: string;
 }
 
+/** How a task repeats. "none" is a plain, one-off task. */
+export type TaskRecurrence = "none" | "daily" | "weekdays" | "custom" | "specific-time";
+
 export interface TaskItem {
   id: string;
   title: string;
   /** "open"/"done" kept for backwards compatibility with stored data */
   status: "open" | "done" | "active" | "completed" | "archived";
+  /** Recurrence pattern; absent/"none" means a plain one-off task. */
+  recurrence?: TaskRecurrence;
+  /** Used when recurrence === "custom": 0 = Sunday … 6 = Saturday. */
+  customDays?: number[];
+  /** ISO date (YYYY-MM-DD) — optional starting/reference date. */
+  date?: string;
+  /** 24h time (HH:MM) — optional scheduled time. */
+  time?: string;
+  /** ISO date (YYYY-MM-DD) the task was last marked completed. Recurring
+   * tasks whose `completedOn` isn't today automatically reset to active. */
+  completedOn?: string;
 }
 
 export interface InformationItem {

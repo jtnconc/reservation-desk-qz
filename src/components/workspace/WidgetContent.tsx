@@ -1,12 +1,20 @@
 import { useState } from "react";
-import { ArrowUpRight, Check, Clock, Pencil, Pin, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Check, Clock, Pencil, Pin, Repeat, Trash2, X } from "lucide-react";
 import { useWorkspace } from "@/workspace/store";
-import type { ItemStatus, NoteRefItem, ReminderItem, Widget } from "@/workspace/types";
+import type { ItemStatus, NoteRefItem, ReminderItem, TaskItem, Widget } from "@/workspace/types";
 import { DateField } from "@/components/common/DateField";
 import { TimeField } from "@/components/common/TimeField";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { highlightHtml, highlightText, matchesQuery } from "@/lib/highlight";
+import { RECURRENCE_LABELS, WEEKDAY_LABELS, isTaskDueToday } from "@/lib/task-schedule";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { accentVar } from "./AccentControl";
 
@@ -110,9 +118,100 @@ function splitWhen(r: ReminderItem) {
   return { date: d ?? "", time: r.time ?? t ?? "" };
 }
 
+const RECURRENCE_OPTIONS: Exclude<TaskItem["recurrence"], undefined>[] = [
+  "none",
+  "daily",
+  "weekdays",
+  "custom",
+  "specific-time",
+];
+
+/** Inline repeat + date/time scheduling panel shared by every task row. */
+function TaskSchedulePanel({
+  task,
+  onChange,
+  onDone,
+}: {
+  task: TaskItem;
+  onChange: (patch: Partial<TaskItem>) => void;
+  onDone: () => void;
+}) {
+  const recurrence = task.recurrence ?? "none";
+  return (
+    <div className="mt-1.5 space-y-1.5" onClick={stop} onPointerDown={stop}>
+      <Select
+        value={recurrence}
+        onValueChange={(v) =>
+          onChange({ recurrence: v as Exclude<TaskItem["recurrence"], undefined> })
+        }
+      >
+        <SelectTrigger
+          aria-label="Repeat"
+          className="h-auto w-full rounded-xl border-border bg-surface px-2 py-1 text-[11px] shadow-none focus:ring-0 focus-visible:border-ring"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="rounded-xl">
+          {RECURRENCE_OPTIONS.map((r) => (
+            <SelectItem key={r} value={r} className="text-[12px]">
+              {RECURRENCE_LABELS[r]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {recurrence === "custom" && (
+        <div className="flex gap-1">
+          {WEEKDAY_LABELS.map((label, day) => {
+            const active = (task.customDays ?? []).includes(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                aria-pressed={active}
+                aria-label={`Repeat on day ${day}`}
+                onClick={() => {
+                  const set = new Set(task.customDays ?? []);
+                  if (set.has(day)) set.delete(day);
+                  else set.add(day);
+                  onChange({ customDays: [...set].sort() });
+                }}
+                className={cn(
+                  "flex size-6 items-center justify-center rounded-full border text-[10px] font-semibold transition-colors",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-surface text-muted-foreground hover:bg-secondary",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-1.5">
+        <DateField
+          size="sm"
+          value={task.date ?? ""}
+          onChange={(iso) => onChange({ date: iso })}
+          placeholder="Pick a date"
+          aria-label="Task date"
+        />
+        <TimeField value={task.time ?? ""} onChange={(t) => onChange({ time: t })} />
+      </div>
+
+      <button type="button" onClick={onDone} className="label-xs hover:text-foreground">
+        Done
+      </button>
+    </div>
+  );
+}
+
 function TasksContent({ widget }: { widget: Widget }) {
-  const { toggleTask, deleteTask, searchQuery } = useWorkspace();
+  const { toggleTask, updateTask, deleteTask, searchQuery } = useWorkspace();
   const [tapped, setTapped] = useState<string | null>(null);
+  const [scheduling, setScheduling] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   if (widget.content.kind !== "tasks") return null;
   const items = widget.content.items.filter((t) => matchesQuery(t.title, searchQuery));
@@ -123,6 +222,9 @@ function TasksContent({ widget }: { widget: Widget }) {
       {items.map((t) => {
         const done = taskState(t.status) === "completed";
         const isConfirming = confirming === t.id;
+        const isScheduling = scheduling === t.id;
+        const recurs = !!t.recurrence && t.recurrence !== "none";
+        const dueToday = !done && isTaskDueToday(t);
         return (
           <li
             key={t.id}
@@ -146,25 +248,66 @@ function TasksContent({ widget }: { widget: Widget }) {
             >
               {done && <Check className="size-2.5 text-white" strokeWidth={3} />}
             </button>
-            <span
-              className={cn(
-                "min-w-0 flex-1 break-words text-[13px] leading-snug",
-                done && "text-muted-foreground line-through",
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-1.5">
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 break-words text-[13px] leading-snug",
+                    done && "text-muted-foreground line-through",
+                  )}
+                >
+                  {highlightText(t.title, searchQuery)}
+                </span>
+                {dueToday && (
+                  <span
+                    aria-hidden
+                    className="mt-1 size-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: accentVar("green") }}
+                    title="Due today"
+                  />
+                )}
+              </div>
+              {(recurs || t.time) && !isScheduling && (
+                <p className="truncate font-mono text-[11px] text-muted-foreground">
+                  {recurs ? RECURRENCE_LABELS[t.recurrence!] : ""}
+                  {recurs && t.time ? " · " : ""}
+                  {t.time ?? ""}
+                </p>
               )}
-            >
-              {highlightText(t.title, searchQuery)}
-            </span>
-            <ItemActions revealed={tapped === t.id || isConfirming}>
-              <DeleteAction
-                label="Delete task"
-                confirming={isConfirming}
-                onRequest={() => setConfirming(t.id)}
-                onCancel={() => setConfirming(null)}
-                onConfirm={() => {
-                  setConfirming(null);
-                  deleteTask(widget.id, t.id);
-                }}
-              />
+              {isScheduling && (
+                <TaskSchedulePanel
+                  task={t}
+                  onChange={(patch) => updateTask(widget.id, t.id, patch)}
+                  onDone={() => setScheduling(null)}
+                />
+              )}
+            </div>
+            <ItemActions revealed={tapped === t.id || isConfirming || isScheduling}>
+              {isConfirming ? (
+                <DeleteAction
+                  label="Delete task"
+                  confirming
+                  onRequest={() => setConfirming(t.id)}
+                  onCancel={() => setConfirming(null)}
+                  onConfirm={() => {
+                    setConfirming(null);
+                    deleteTask(widget.id, t.id);
+                  }}
+                />
+              ) : (
+                <>
+                  <MiniAction label="Repeat & schedule task" onClick={() => setScheduling(t.id)}>
+                    <Repeat className="size-3" />
+                  </MiniAction>
+                  <DeleteAction
+                    label="Delete task"
+                    confirming={false}
+                    onRequest={() => setConfirming(t.id)}
+                    onCancel={() => setConfirming(null)}
+                    onConfirm={() => deleteTask(widget.id, t.id)}
+                  />
+                </>
+              )}
             </ItemActions>
           </li>
         );
