@@ -126,25 +126,27 @@ export function WorkspaceHeader({
   }, [query, widgets, quote, quoteHistory, openWidget, openTool, loadQuote]);
 
   return (
-    <header className="z-30 w-full shrink-0 bg-transparent">
-      <div className="mx-auto flex h-14 w-full max-w-[1240px] flex-row flex-nowrap items-center gap-3 overflow-x-auto whitespace-nowrap px-5">
-        <ToolSwitcher />
+    <header className="relative z-40 w-full shrink-0 bg-transparent">
+      <div className="mx-auto flex h-14 w-full max-w-[1240px] flex-row flex-nowrap items-center gap-3 px-5">
+        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto overflow-y-visible whitespace-nowrap">
+          <ToolSwitcher />
 
-        {mode === "tool" && activeTool === "notes" && <NotesToolbar />}
-        {mode === "tool" && activeTool === "quote" && (
-          <QuoteToolbar
-            preview={quotePreview}
-            onTogglePreview={onToggleQuotePreview}
-            history={quoteHistoryOpen}
-            onToggleHistory={onToggleQuoteHistory}
-          />
-        )}
+          {mode === "tool" && activeTool === "notes" && <NotesToolbar />}
+          {mode === "tool" && activeTool === "quote" && (
+            <QuoteToolbar
+              preview={quotePreview}
+              onTogglePreview={onToggleQuotePreview}
+              history={quoteHistoryOpen}
+              onToggleHistory={onToggleQuoteHistory}
+            />
+          )}
+        </div>
 
         <div
           ref={searchWrapRef}
-          className="sticky right-0 ml-auto flex shrink-0 items-center bg-background/95 pl-2"
+          className="relative z-50 ml-auto flex shrink-0 items-center overflow-visible"
         >
-          <div className="relative flex items-center">
+          <div className="relative flex items-center overflow-visible">
             <div
               className={cn(
                 "flex h-9 items-center overflow-hidden rounded-full border border-border bg-surface shadow-desk transition-all duration-300 ease-out",
@@ -198,7 +200,7 @@ export function WorkspaceHeader({
             </div>
 
             {searchOpen && query.trim() && (
-              <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-80 rounded-xl border border-border bg-surface p-2 shadow-lg">
+              <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-80 rounded-xl border border-border bg-surface p-2 shadow-lg">
                 <div className="max-h-72 overflow-y-auto px-1 pb-1 pt-1">
                   {hits.length === 0 ? (
                     <p className="px-2 py-3 text-sm text-muted-foreground">
