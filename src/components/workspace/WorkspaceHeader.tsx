@@ -105,7 +105,13 @@ export function WorkspaceHeader({
 
   return (
     <header className="z-30 w-full shrink-0 bg-transparent">
-      <div className="mx-auto flex h-14 w-full max-w-[1240px] flex-row flex-nowrap items-center gap-3 overflow-x-auto whitespace-nowrap px-5">
+      {/*
+       * Height is derived from padding (not a fixed h-*) so the clearance
+       * below the row is a deterministic py-3, matching the gap-3 used
+       * between the tool card and the widget pills below it — regardless
+       * of how tall any given toolbar's buttons happen to be.
+       */}
+      <div className="mx-auto flex w-full max-w-[1240px] flex-row flex-nowrap items-center gap-3 overflow-x-auto whitespace-nowrap px-5 py-3">
         <ToolSwitcher />
 
         {mode === "tool" && activeTool === "notes" && <NotesToolbar />}
