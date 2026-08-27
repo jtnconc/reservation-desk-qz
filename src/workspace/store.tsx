@@ -11,6 +11,7 @@ import {
 } from "react";
 import { todayISO } from "@/lib/quote-model";
 import { getHotel } from "@/lib/hotels";
+import { isTaskDueToday } from "@/lib/task-schedule";
 import type {
   ContactItem,
   HotelDetails,
@@ -199,6 +200,9 @@ interface WorkspaceState {
 
   /** Transient "+n" notification counters keyed by widget id (not persisted). */
   pulses: Record<string, number>;
+
+  /** Live global search query (not persisted); drives highlighting/filtering across widgets. */
+  searchQuery: string;
 }
 
 interface WorkspaceApi extends WorkspaceState {
@@ -215,6 +219,7 @@ interface WorkspaceApi extends WorkspaceState {
   addWidgetItem: (type: WidgetType, text: string) => void;
   addReminder: (title: string, date: string, time?: string) => void;
   toggleTask: (widgetId: string, itemId: string) => void;
+  updateTask: (widgetId: string, itemId: string, patch: Partial<TaskItem>) => void;
   setWidgetAccent: (id: string, accent: WidgetAccent) => void;
   setWidgetIcon: (id: string, icon: WidgetIconName) => void;
   renameWidget: (id: string, title: string) => void;
@@ -243,6 +248,7 @@ interface WorkspaceApi extends WorkspaceState {
   returnStickyToNotes: (stickyId: string) => void;
   setWidgetTint: (id: string, tint: WidgetAccent) => void;
   clearPulse: (id: string) => void;
+  setSearchQuery: (q: string) => void;
   updateQuote: (patch: Partial<QuoteDoc>) => void;
   archiveQuote: () => void;
   loadQuote: (id: string) => void;
@@ -283,6 +289,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     hotelRoomTypes: {},
 
     pulses: {},
+    searchQuery: "",
   });
 
   useEffect(() => {
@@ -306,6 +313,35 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+
+  // Recurring tasks that were checked off "reappear" once the day rolls over:
+  // a completed recurring task whose `completedOn` isn't today is reset back
+  // to active. Checked on mount and then re-checked periodically so a tab
+  // left open across midnight resets without needing a reload.
+  useEffect(() => {
+    const resetElapsedRecurringTasks = () => {
+      const today = todayISO();
+      setState((s) => {
+        let changed = false;
+        const widgets = s.widgets.map((w) => {
+          if (w.content.kind !== "tasks") return w;
+          const items = w.content.items.map((t) => {
+            const isDone = t.status === "done" || t.status === "completed";
+            if (!isDone || !t.recurrence || t.recurrence === "none") return t;
+            if (t.completedOn === today) return t;
+            changed = true;
+            const { completedOn, ...rest } = t;
+            return { ...rest, status: "active" as TaskItem["status"] };
+          });
+          return items === w.content.items ? w : { ...w, content: { ...w.content, items } };
+        });
+        return changed ? { ...s, widgets } : s;
+      });
+    };
+    resetElapsedRecurringTasks();
+    const interval = setInterval(resetElapsedRecurringTasks, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     try {
@@ -682,6 +718,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           delete pulses[id];
           return { ...s, pulses };
         }),
+      setSearchQuery: (q) => setState((s) => ({ ...s, searchQuery: q })),
       toggleTask: (widgetId, itemId) =>
         patchWidgets((ws) =>
           ws.map((w) => {
@@ -690,16 +727,29 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
               ...w,
               content: {
                 ...w.content,
-                items: w.content.items.map((t) =>
-                  t.id === itemId
-                    ? {
-                        ...t,
-                        status: (t.status === "done" || t.status === "completed"
-                          ? "active"
-                          : "completed") as TaskItem["status"],
-                      }
-                    : t,
-                ),
+                items: w.content.items.map((t) => {
+                  if (t.id !== itemId) return t;
+                  const wasDone = t.status === "done" || t.status === "completed";
+                  const status = (wasDone ? "active" : "completed") as TaskItem["status"];
+                  if (wasDone) {
+                    const { completedOn, ...rest } = t;
+                    return { ...rest, status };
+                  }
+                  return { ...t, status, completedOn: todayISO() };
+                }),
+              },
+            };
+          }),
+        ),
+      updateTask: (widgetId, itemId, patch) =>
+        patchWidgets((ws) =>
+          ws.map((w) => {
+            if (w.id !== widgetId || w.content.kind !== "tasks") return w;
+            return {
+              ...w,
+              content: {
+                ...w.content,
+                items: w.content.items.map((t) => (t.id === itemId ? { ...t, ...patch } : t)),
               },
             };
           }),

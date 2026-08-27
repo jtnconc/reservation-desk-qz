@@ -118,6 +118,7 @@ export function NotesTool() {
             ref={editorRef}
             contentEditable
             suppressContentEditableWarning
+            suppressHydrationWarning
             role="textbox"
             aria-multiline="true"
             aria-label="Notes"

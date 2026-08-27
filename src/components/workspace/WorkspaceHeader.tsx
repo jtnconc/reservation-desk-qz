@@ -1,16 +1,12 @@
-import { useMemo, useState } from "react";
-import { Bell, FileText, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { FileText, Search, X } from "lucide-react";
 import { useWorkspace } from "@/workspace/store";
 import { ToolSwitcher } from "@/components/workspace/ToolSwitcher";
 import { NotesToolbar } from "@/components/tools/NotesToolbar";
 import { QuoteToolbar } from "@/components/tools/QuoteToolbar";
 import type { WidgetType } from "@/workspace/types";
 import { quoteNumber } from "@/lib/quote-model";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const stripHtml = (html: string) =>
   html
@@ -47,9 +43,35 @@ export function WorkspaceHeader({
     quote,
     quoteHistory,
     loadQuote,
+    setSearchQuery,
   } = useWorkspace();
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setQuery("");
+    setSearchQuery("");
+  };
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!searchWrapRef.current?.contains(e.target as Node)) closeSearch();
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeSearch();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchOpen]);
 
   // Global search: matches notes, reminders, tasks, contacts, information
   // rows and quotations (current + history).
@@ -104,35 +126,82 @@ export function WorkspaceHeader({
   }, [query, widgets, quote, quoteHistory, openWidget, openTool, loadQuote]);
 
   return (
-    <header className="z-30 w-full shrink-0 bg-transparent">
-      <div className="mx-auto flex h-14 w-full max-w-[1240px] flex-row flex-nowrap items-center gap-3 overflow-x-auto whitespace-nowrap px-5">
-        <ToolSwitcher />
+    <header className="relative z-40 w-full shrink-0 bg-transparent">
+      <div className="mx-auto flex h-14 w-full max-w-[1240px] flex-row flex-nowrap items-center gap-3 px-5">
+        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto overflow-y-visible whitespace-nowrap">
+          <ToolSwitcher />
 
-        {mode === "tool" && activeTool === "notes" && <NotesToolbar />}
-        {mode === "tool" && activeTool === "quote" && (
-          <QuoteToolbar
-            preview={quotePreview}
-            onTogglePreview={onToggleQuotePreview}
-            history={quoteHistoryOpen}
-            onToggleHistory={onToggleQuoteHistory}
-          />
-        )}
+          {mode === "tool" && activeTool === "notes" && <NotesToolbar />}
+          {mode === "tool" && activeTool === "quote" && (
+            <QuoteToolbar
+              preview={quotePreview}
+              onTogglePreview={onToggleQuotePreview}
+              history={quoteHistoryOpen}
+              onToggleHistory={onToggleQuoteHistory}
+            />
+          )}
+        </div>
 
-        <div className="sticky right-0 ml-auto flex shrink-0 items-center gap-1 bg-background/95 pl-2">
-          <Popover open={searchOpen} onOpenChange={setSearchOpen}>
-            <PopoverTrigger className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-              <Search className="size-[17px]" />
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 p-2">
+        <div
+          ref={searchWrapRef}
+          className="relative z-50 ml-auto flex shrink-0 items-center overflow-visible"
+        >
+          <div className="relative flex items-center overflow-visible">
+            <div
+              className={cn(
+                "flex h-9 items-center overflow-hidden rounded-full border border-border bg-surface shadow-desk transition-all duration-300 ease-out",
+                searchOpen ? "w-64" : "w-9",
+              )}
+            >
+              <button
+                type="button"
+                aria-label={searchOpen ? "Close search" : "Search"}
+                onClick={() => {
+                  if (searchOpen) {
+                    closeSearch();
+                  } else {
+                    setSearchOpen(true);
+                    requestAnimationFrame(() => searchInputRef.current?.focus());
+                  }
+                }}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              >
+                <Search className="size-[17px]" />
+              </button>
               <input
-                autoFocus
+                ref={searchInputRef}
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setSearchQuery(e.target.value);
+                }}
                 placeholder="Search reservations, guests, notes"
-                className="w-full rounded-lg bg-secondary px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
+                aria-hidden={!searchOpen}
+                tabIndex={searchOpen ? 0 : -1}
+                className={cn(
+                  "min-w-0 flex-1 bg-transparent pr-3 text-sm outline-none transition-opacity placeholder:text-muted-foreground",
+                  searchOpen ? "opacity-100 delay-150 duration-200" : "opacity-0",
+                )}
               />
-              {query.trim() ? (
-                <div className="max-h-72 overflow-y-auto px-1 pb-1 pt-2">
+              {searchOpen && query.trim() && (
+                <button
+                  type="button"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setQuery("");
+                    setSearchQuery("");
+                    searchInputRef.current?.focus();
+                  }}
+                  className="mr-2 flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            {searchOpen && query.trim() && (
+              <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-80 rounded-xl border border-border bg-surface p-2 shadow-lg">
+                <div className="max-h-72 overflow-y-auto px-1 pb-1 pt-1">
                   {hits.length === 0 ? (
                     <p className="px-2 py-3 text-sm text-muted-foreground">
                       No results for “{query.trim()}”.
@@ -145,8 +214,7 @@ export function WorkspaceHeader({
                             type="button"
                             onClick={() => {
                               h.onOpen();
-                              setSearchOpen(false);
-                              setQuery("");
+                              closeSearch();
                             }}
                             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-secondary"
                           >
@@ -159,35 +227,9 @@ export function WorkspaceHeader({
                     </ul>
                   )}
                 </div>
-              ) : (
-                <>
-                  <p className="px-3 pb-1 pt-3 label-xs">Recent</p>
-                  <ul className="space-y-1 px-1 pb-1 text-sm">
-                    <li className="rounded-md px-2 py-1.5 hover:bg-secondary">
-                      Carlos Morales · <span className="font-mono text-xs">21114</span>
-                    </li>
-                    <li className="rounded-md px-2 py-1.5 hover:bg-secondary">
-                      Biomedical Support · 9 HAB
-                    </li>
-                  </ul>
-                </>
-              )}
-            </PopoverContent>
-          </Popover>
-
-          <Popover>
-            <PopoverTrigger className="relative flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
-              <Bell className="size-[17px]" />
-              <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-entity-reservation" />
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-72 p-3 text-sm">
-              <p className="label-xs mb-2">Notifications</p>
-              <p className="text-muted-foreground">
-                Quotation for <span className="font-mono text-xs text-foreground">21114</span> is due
-                tomorrow.
-              </p>
-            </PopoverContent>
-          </Popover>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

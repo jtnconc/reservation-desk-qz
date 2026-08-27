@@ -1,11 +1,20 @@
 import { useState } from "react";
-import { ArrowUpRight, Check, Clock, Pencil, Pin, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Check, Clock, Pencil, Pin, Repeat, Trash2, X } from "lucide-react";
 import { useWorkspace } from "@/workspace/store";
-import type { ItemStatus, NoteRefItem, ReminderItem, Widget } from "@/workspace/types";
+import type { ItemStatus, NoteRefItem, ReminderItem, TaskItem, Widget } from "@/workspace/types";
 import { DateField } from "@/components/common/DateField";
 import { TimeField } from "@/components/common/TimeField";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
+import { highlightHtml, highlightText, matchesQuery } from "@/lib/highlight";
+import { RECURRENCE_LABELS, WEEKDAY_LABELS, isTaskDueToday } from "@/lib/task-schedule";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { accentVar } from "./AccentControl";
 
@@ -109,12 +118,103 @@ function splitWhen(r: ReminderItem) {
   return { date: d ?? "", time: r.time ?? t ?? "" };
 }
 
+const RECURRENCE_OPTIONS: Exclude<TaskItem["recurrence"], undefined>[] = [
+  "none",
+  "daily",
+  "weekdays",
+  "custom",
+  "specific-time",
+];
+
+/** Inline repeat + date/time scheduling panel shared by every task row. */
+function TaskSchedulePanel({
+  task,
+  onChange,
+  onDone,
+}: {
+  task: TaskItem;
+  onChange: (patch: Partial<TaskItem>) => void;
+  onDone: () => void;
+}) {
+  const recurrence = task.recurrence ?? "none";
+  return (
+    <div className="mt-1.5 space-y-1.5" onClick={stop} onPointerDown={stop}>
+      <Select
+        value={recurrence}
+        onValueChange={(v) =>
+          onChange({ recurrence: v as Exclude<TaskItem["recurrence"], undefined> })
+        }
+      >
+        <SelectTrigger
+          aria-label="Repeat"
+          className="h-auto w-full rounded-xl border-border bg-surface px-2 py-1 text-[11px] shadow-none focus:ring-0 focus-visible:border-ring"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="rounded-xl">
+          {RECURRENCE_OPTIONS.map((r) => (
+            <SelectItem key={r} value={r} className="text-[12px]">
+              {RECURRENCE_LABELS[r]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {recurrence === "custom" && (
+        <div className="flex gap-1">
+          {WEEKDAY_LABELS.map((label, day) => {
+            const active = (task.customDays ?? []).includes(day);
+            return (
+              <button
+                key={day}
+                type="button"
+                aria-pressed={active}
+                aria-label={`Repeat on day ${day}`}
+                onClick={() => {
+                  const set = new Set(task.customDays ?? []);
+                  if (set.has(day)) set.delete(day);
+                  else set.add(day);
+                  onChange({ customDays: [...set].sort() });
+                }}
+                className={cn(
+                  "flex size-6 items-center justify-center rounded-full border text-[10px] font-semibold transition-colors",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-surface text-muted-foreground hover:bg-secondary",
+                )}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-1.5">
+        <DateField
+          size="sm"
+          value={task.date ?? ""}
+          onChange={(iso) => onChange({ date: iso })}
+          placeholder="Pick a date"
+          aria-label="Task date"
+        />
+        <TimeField value={task.time ?? ""} onChange={(t) => onChange({ time: t })} />
+      </div>
+
+      <button type="button" onClick={onDone} className="label-xs hover:text-foreground">
+        Done
+      </button>
+    </div>
+  );
+}
+
 function TasksContent({ widget }: { widget: Widget }) {
-  const { toggleTask, deleteTask } = useWorkspace();
+  const { toggleTask, updateTask, deleteTask, searchQuery } = useWorkspace();
   const [tapped, setTapped] = useState<string | null>(null);
+  const [scheduling, setScheduling] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   if (widget.content.kind !== "tasks") return null;
-  const items = widget.content.items;
+  const items = widget.content.items.filter((t) => matchesQuery(t.title, searchQuery));
   const accent = accentVar(widget.accent);
 
   return (
@@ -122,6 +222,9 @@ function TasksContent({ widget }: { widget: Widget }) {
       {items.map((t) => {
         const done = taskState(t.status) === "completed";
         const isConfirming = confirming === t.id;
+        const isScheduling = scheduling === t.id;
+        const recurs = !!t.recurrence && t.recurrence !== "none";
+        const dueToday = !done && isTaskDueToday(t);
         return (
           <li
             key={t.id}
@@ -145,25 +248,66 @@ function TasksContent({ widget }: { widget: Widget }) {
             >
               {done && <Check className="size-2.5 text-white" strokeWidth={3} />}
             </button>
-            <span
-              className={cn(
-                "min-w-0 flex-1 break-words text-[13px] leading-snug",
-                done && "text-muted-foreground line-through",
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-1.5">
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 break-words text-[13px] leading-snug",
+                    done && "text-muted-foreground line-through",
+                  )}
+                >
+                  {highlightText(t.title, searchQuery)}
+                </span>
+                {dueToday && (
+                  <span
+                    aria-hidden
+                    className="mt-1 size-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: accentVar("green") }}
+                    title="Due today"
+                  />
+                )}
+              </div>
+              {(recurs || t.time) && !isScheduling && (
+                <p className="truncate font-mono text-[11px] text-muted-foreground">
+                  {recurs ? RECURRENCE_LABELS[t.recurrence!] : ""}
+                  {recurs && t.time ? " · " : ""}
+                  {t.time ?? ""}
+                </p>
               )}
-            >
-              {t.title}
-            </span>
-            <ItemActions revealed={tapped === t.id || isConfirming}>
-              <DeleteAction
-                label="Delete task"
-                confirming={isConfirming}
-                onRequest={() => setConfirming(t.id)}
-                onCancel={() => setConfirming(null)}
-                onConfirm={() => {
-                  setConfirming(null);
-                  deleteTask(widget.id, t.id);
-                }}
-              />
+              {isScheduling && (
+                <TaskSchedulePanel
+                  task={t}
+                  onChange={(patch) => updateTask(widget.id, t.id, patch)}
+                  onDone={() => setScheduling(null)}
+                />
+              )}
+            </div>
+            <ItemActions revealed={tapped === t.id || isConfirming || isScheduling}>
+              {isConfirming ? (
+                <DeleteAction
+                  label="Delete task"
+                  confirming
+                  onRequest={() => setConfirming(t.id)}
+                  onCancel={() => setConfirming(null)}
+                  onConfirm={() => {
+                    setConfirming(null);
+                    deleteTask(widget.id, t.id);
+                  }}
+                />
+              ) : (
+                <>
+                  <MiniAction label="Repeat & schedule task" onClick={() => setScheduling(t.id)}>
+                    <Repeat className="size-3" />
+                  </MiniAction>
+                  <DeleteAction
+                    label="Delete task"
+                    confirming={false}
+                    onRequest={() => setConfirming(t.id)}
+                    onCancel={() => setConfirming(null)}
+                    onConfirm={() => deleteTask(widget.id, t.id)}
+                  />
+                </>
+              )}
             </ItemActions>
           </li>
         );
@@ -173,14 +317,14 @@ function TasksContent({ widget }: { widget: Widget }) {
 }
 
 function RemindersContent({ widget }: { widget: Widget }) {
-  const { updateReminder, setReminderStatus, deleteReminder } = useWorkspace();
+  const { updateReminder, setReminderStatus, deleteReminder, searchQuery } = useWorkspace();
   const [editing, setEditing] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState<string | null>(null);
   const [tapped, setTapped] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   if (widget.content.kind !== "reminders") return null;
   const accent = accentVar(widget.accent);
-  const items = widget.content.items;
+  const items = widget.content.items.filter((r) => matchesQuery(r.title, searchQuery));
 
   return (
     <ul className="space-y-2.5">
@@ -240,7 +384,7 @@ function RemindersContent({ widget }: { widget: Widget }) {
                     done && "text-muted-foreground line-through",
                   )}
                 >
-                  {r.title}
+                  {highlightText(r.title, searchQuery)}
                 </p>
               )}
 
@@ -318,7 +462,7 @@ function RemindersContent({ widget }: { widget: Widget }) {
 }
 
 function ContactsContent({ widget }: { widget: Widget }) {
-  const { updateContact, deleteContact } = useWorkspace();
+  const { updateContact, deleteContact, searchQuery } = useWorkspace();
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [tapped, setTapped] = useState<string | null>(null);
@@ -327,9 +471,13 @@ function ContactsContent({ widget }: { widget: Widget }) {
   const field =
     "w-full rounded-lg bg-surface px-2 py-1 text-[12px] outline-none focus:ring-1 focus:ring-ring";
 
+  const visible = widget.content.items.filter((p) =>
+    matchesQuery([p.name, p.company, p.email, p.phone].filter(Boolean).join(" "), searchQuery),
+  );
+
   return (
     <ul className="grid grid-cols-1 gap-2.5 @[22rem]:grid-cols-2">
-      {widget.content.items.map((p) => {
+      {visible.map((p) => {
         const isEditing = editing === p.id;
         const isConfirming = confirming === p.id;
         return (
@@ -372,13 +520,23 @@ function ContactsContent({ widget }: { widget: Widget }) {
                   </div>
                 ) : (
                   <>
-                    <p className="truncate pr-6 text-[13px] font-medium">{p.name}</p>
+                    <p className="truncate pr-6 text-[13px] font-medium">
+                      {highlightText(p.name, searchQuery)}
+                    </p>
                     {p.company && (
-                      <p className="truncate text-[11px] text-muted-foreground">{p.company}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        {highlightText(p.company, searchQuery)}
+                      </p>
                     )}
-                    {p.email && <p className="truncate text-[11px] text-entity-email">{p.email}</p>}
+                    {p.email && (
+                      <p className="truncate text-[11px] text-entity-email">
+                        {highlightText(p.email, searchQuery)}
+                      </p>
+                    )}
                     {p.phone && (
-                      <p className="truncate font-mono text-[11px] text-entity-phone">{p.phone}</p>
+                      <p className="truncate font-mono text-[11px] text-entity-phone">
+                        {highlightText(p.phone, searchQuery)}
+                      </p>
                     )}
                   </>
                 )}
@@ -447,7 +605,8 @@ function StickyNoteEditor({ widgetId, note }: { widgetId: string; note: NoteRefI
 }
 
 function NotesContent({ widget }: { widget: Widget }) {
-  const { convertNoteToSticky, deleteNote, toggleNotePin, editNoteInEditor } = useWorkspace();
+  const { convertNoteToSticky, deleteNote, toggleNotePin, editNoteInEditor, searchQuery } =
+    useWorkspace();
   const [tapped, setTapped] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   if (widget.content.kind !== "notes") return null;
@@ -462,14 +621,16 @@ function NotesContent({ widget }: { widget: Widget }) {
       </div>
     );
 
-  const ordered = [...widget.content.items].sort(
-    (a, b) => Number(!!b.pinned) - Number(!!a.pinned),
-  );
+  const ordered = [...widget.content.items]
+    .filter((n) => matchesQuery(n.text.replace(/<[^>]+>/g, " "), searchQuery))
+    .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned));
 
   if (ordered.length === 0)
     return (
       <p className="text-[12px] text-muted-foreground">
-        Write in the NOTES editor and press save to add a note here.
+        {searchQuery.trim()
+          ? "No notes match your search."
+          : "Write in the NOTES editor and press save to add a note here."}
       </p>
     );
 
@@ -488,7 +649,9 @@ function NotesContent({ widget }: { widget: Widget }) {
           >
             <span
               className="notes-rich min-w-0 flex-1 break-words text-[13px] leading-snug"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(n.text) }}
+              dangerouslySetInnerHTML={{
+                __html: highlightHtml(sanitizeHtml(n.text), searchQuery),
+              }}
             />
             {n.pinned && (
               <Pin
@@ -551,11 +714,19 @@ function NotesContent({ widget }: { widget: Widget }) {
  * reveals a compact floating toolbar with edit / detach / clear icons.
  */
 function InformationContent({ widget }: { widget: Widget }) {
-  const { updateInformation, deleteInformation, addInformation, clearInformation, convertInformationToSticky } = useWorkspace();
+  const {
+    updateInformation,
+    deleteInformation,
+    addInformation,
+    clearInformation,
+    convertInformationToSticky,
+    searchQuery,
+  } = useWorkspace();
   const [editing, setEditing] = useState(false);
   const [toolbar, setToolbar] = useState(false);
   if (widget.content.kind !== "information") return null;
   const items = widget.content.items;
+  const visible = items.filter((i) => matchesQuery(`${i.label} ${i.value}`, searchQuery));
   const field =
     "w-full rounded-lg bg-surface px-2 py-1 text-[12px] outline-none focus:ring-1 focus:ring-ring";
 
@@ -628,10 +799,12 @@ function InformationContent({ widget }: { widget: Widget }) {
         </div>
       )}
       <dl className="divide-y divide-border/60 overflow-hidden rounded-xl bg-surface-2">
-        {items.map((i) => (
+        {visible.map((i) => (
           <div key={i.id} className="flex items-baseline justify-between gap-3 px-3 py-1.5">
-            <dt className="label-xs shrink-0">{i.label}</dt>
-            <dd className="min-w-0 truncate text-right font-mono text-[12.5px]">{i.value}</dd>
+            <dt className="label-xs shrink-0">{highlightText(i.label, searchQuery)}</dt>
+            <dd className="min-w-0 truncate text-right font-mono text-[12.5px]">
+              {highlightText(i.value, searchQuery)}
+            </dd>
           </div>
         ))}
       </dl>

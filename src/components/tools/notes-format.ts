@@ -35,3 +35,36 @@ export function insertNotesImage(dataUrl: string) {
     );
   });
 }
+
+/**
+ * Applies an exact pixel font size to the current selection.
+ * execCommand("fontSize") only supports the legacy 1-7 scale, so we use size
+ * "7" as a temporary marker, then swap the resulting <font size="7"> tags for
+ * a <span style="font-size:Npx"> wrapper.
+ */
+export function applyNotesFontSize(px: number) {
+  withEditor((el) => {
+    document.execCommand("styleWithCSS", false, "true");
+    document.execCommand("fontSize", false, "7");
+    const markers = el.querySelectorAll('font[size="7"]');
+    markers.forEach((marker) => {
+      const span = document.createElement("span");
+      span.style.fontSize = `${px}px`;
+      span.innerHTML = marker.innerHTML;
+      marker.replaceWith(span);
+    });
+  });
+}
+
+/** Reads the font size (px) at the current caret/selection, if any. */
+export function getNotesFontSize(): number | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const node = sel.anchorNode;
+  if (!node) return null;
+  const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+  if (!el) return null;
+  const size = window.getComputedStyle(el).fontSize;
+  const parsed = Number.parseFloat(size);
+  return Number.isFinite(parsed) ? Math.round(parsed) : null;
+}

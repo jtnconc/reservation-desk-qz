@@ -3,11 +3,33 @@ import { Undo2 } from "lucide-react";
 import { useWorkspace } from "@/workspace/store";
 import type { Widget, WidgetSize } from "@/workspace/types";
 import { cn } from "@/lib/utils";
+import { todayISO } from "@/lib/quote-model";
+import { isTaskDueToday } from "@/lib/task-schedule";
 import { WidgetContent } from "./WidgetContent";
 import { SizeControl } from "./SizeControl";
 import { accentVar, tintVar } from "./AccentControl";
 import { WidgetCustomizer } from "./WidgetCustomizer";
 import { widgetIcon } from "./widget-icons";
+
+/** True when a widget has something actionable due "now" that should surface
+ * a small colored dot on its minimized pill, even while collapsed. */
+function dueBadgeColor(w: Widget): string | null {
+  if (w.content.kind === "reminders") {
+    const today = todayISO();
+    const due = w.content.items.some(
+      (r) => (r.status ?? (r.done ? "completed" : "active")) === "active" && r.date === today,
+    );
+    return due ? accentVar("orange") : null;
+  }
+  if (w.content.kind === "tasks") {
+    const due = w.content.items.some((t) => {
+      const done = t.status === "done" || t.status === "completed";
+      return !done && isTaskDueToday(t);
+    });
+    return due ? accentVar("green") : null;
+  }
+  return null;
+}
 
 const spanClass = (w: Widget) =>
   cn(
@@ -67,6 +89,7 @@ export function WidgetGrid() {
         {ordered.map((w) => {
           const Icon = widgetIcon(w.type, w.icon);
           const pulse = pulses[w.id];
+          const badgeColor = dueBadgeColor(w);
           return (
             <button
               key={w.id}
@@ -86,6 +109,13 @@ export function WidgetGrid() {
                 <span className="absolute -right-1 -top-1 rounded-full bg-primary px-1.5 py-[1px] text-[10px] font-semibold text-primary-foreground">
                   +{pulse}
                 </span>
+              ) : badgeColor ? (
+                <span
+                  aria-label="Due today"
+                  title="Due today"
+                  className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-surface"
+                  style={{ backgroundColor: badgeColor }}
+                />
               ) : null}
             </button>
           );

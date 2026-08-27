@@ -13,7 +13,7 @@
 const ALLOWED_TAGS = new Set([
   "b", "strong", "i", "em", "u", "s", "strike", "span", "div", "p", "br",
   "a", "img", "ul", "ol", "li", "font", "h1", "h2", "h3", "blockquote",
-  "code", "pre",
+  "code", "pre", "mark",
 ]);
 
 // Tags whose entire subtree must be removed (not just unwrapped).
