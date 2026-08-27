@@ -93,6 +93,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Spline+Sans+Mono:ital,wght@0,300..700;1,300..700&display=swap",
       },
       {
+        // Font families offered by the notes typography menu.
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400..700;1,400..700&family=Merriweather:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&family=Poppins:ital,wght@0,400;0,500;0,600;1,400&display=swap",
+      },
+      {
         rel: "stylesheet",
         href: appCss,
       },

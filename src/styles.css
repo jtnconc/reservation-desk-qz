@@ -151,7 +151,8 @@
 }
 
 .notes-editor {
-  font-size: 15px;
+  /* Base size the typography menu reports as "16px". */
+  font-size: 16px;
   line-height: 28px;
   padding: 4px 6px;
   caret-color: var(--color-foreground);
