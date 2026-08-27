@@ -199,6 +199,9 @@ interface WorkspaceState {
 
   /** Transient "+n" notification counters keyed by widget id (not persisted). */
   pulses: Record<string, number>;
+
+  /** Live global search query (not persisted); drives highlighting/filtering across widgets. */
+  searchQuery: string;
 }
 
 interface WorkspaceApi extends WorkspaceState {
@@ -243,6 +246,7 @@ interface WorkspaceApi extends WorkspaceState {
   returnStickyToNotes: (stickyId: string) => void;
   setWidgetTint: (id: string, tint: WidgetAccent) => void;
   clearPulse: (id: string) => void;
+  setSearchQuery: (q: string) => void;
   updateQuote: (patch: Partial<QuoteDoc>) => void;
   archiveQuote: () => void;
   loadQuote: (id: string) => void;
@@ -283,6 +287,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     hotelRoomTypes: {},
 
     pulses: {},
+    searchQuery: "",
   });
 
   useEffect(() => {
@@ -682,6 +687,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           delete pulses[id];
           return { ...s, pulses };
         }),
+      setSearchQuery: (q) => setState((s) => ({ ...s, searchQuery: q })),
       toggleTask: (widgetId, itemId) =>
         patchWidgets((ws) =>
           ws.map((w) => {
