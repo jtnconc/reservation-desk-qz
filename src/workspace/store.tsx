@@ -13,6 +13,7 @@ import { todayISO } from "@/lib/quote-model";
 import { getHotel } from "@/lib/hotels";
 import { isTaskDueToday } from "@/lib/task-schedule";
 import type {
+  CallLogEntry,
   ContactItem,
   HotelDetails,
   InformationItem,
@@ -189,6 +190,9 @@ interface WorkspaceState {
   widgets: Widget[];
   noteText: string;
   noteHistory: NoteVersion[];
+  /** Completed calls, isolated from general notes. Powers the Call History
+   * side panel and the Daily Statistics tool. */
+  callHistory: CallLogEntry[];
   quote: QuoteDoc;
   quoteHistory: QuoteDoc[];
   /** Uploaded hotel logos (data URLs), keyed by hotel id, available to the PDF generator. */
@@ -236,6 +240,11 @@ interface WorkspaceApi extends WorkspaceState {
   deleteNote: (widgetId: string, itemId: string) => void;
   /** Save the draft editor content as a new independent note card. */
   saveNoteToWidget: () => void;
+  /**
+   * Log a finished call strictly into the isolated Call History — never
+   * into the general notes widget/history. Clears the draft editor.
+   */
+  finishCall: (payload: { html: string; text: string; property: "AR" | "ER" | "RI"; hashtags: string[] }) => void;
   toggleNotePin: (widgetId: string, itemId: string) => void;
   /** Move a saved note back into the draft editor for editing. */
   editNoteInEditor: (widgetId: string, itemId: string) => void;
@@ -282,6 +291,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     widgets: DEFAULT_WIDGETS,
     noteText: DEFAULT_NOTE,
     noteHistory: [],
+    callHistory: [],
     quote: DEFAULT_QUOTE(),
     quoteHistory: [],
     hotelLogos: {},
@@ -306,6 +316,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           ? { ...saved.quote, issueDate: todayISO() }
           : s.quote,
         quoteHistory: (saved.quoteHistory ?? []).filter(isValidQuote),
+        callHistory: saved.callHistory ?? [],
         pulses: {},
       }));
     } catch {
@@ -533,6 +544,29 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
                 ? { ...w, content: { ...w.content, items: [{ id: uid(), text: html }, ...w.content.items] } }
                 : w,
             ),
+          };
+        }),
+      finishCall: ({ html, text, property, hashtags }) =>
+        setState((s) => {
+          if (!text.trim() && !/<img/i.test(html)) return s;
+          const now = new Date();
+          return {
+            ...s,
+            noteText: "",
+            // Deliberately does NOT touch `widgets`/`noteHistory` — call
+            // logs must never surface in the general Notes widget/history.
+            callHistory: [
+              {
+                id: uid(),
+                html,
+                text,
+                property,
+                hashtags,
+                savedAtISO: now.toISOString(),
+                savedAt: now.toLocaleString(),
+              },
+              ...s.callHistory,
+            ].slice(0, 500),
           };
         }),
       toggleNotePin: (widgetId, itemId) =>

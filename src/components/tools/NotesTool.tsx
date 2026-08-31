@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { History, PhoneOff, RotateCcw, Save } from "lucide-react";
+import { History, PhoneOff, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/workspace/store";
 import {
@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { insertHashtagAfterActiveProperty, registerNotesEditor } from "./notes-format";
+import { CallHistoryPanel } from "./CallHistoryPanel";
 
 const HIGHLIGHT_PREFIX = "entity-";
 
@@ -24,15 +25,14 @@ export function NotesTool() {
   const {
     noteText,
     setNoteText,
-    noteHistory,
+    callHistory,
     saveNoteToWidget,
-    restoreNoteVersion,
+    finishCall,
     addReminder,
     addContact,
   } = useWorkspace();
   const editorRef = useRef<HTMLDivElement>(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
   const [plain, setPlain] = useState("");
 
   // Keep the DOM in sync only when the incoming value differs (restore/version).
@@ -197,45 +197,7 @@ export function NotesTool() {
           />
         </div>
 
-        {showHistory && (
-          <aside className="w-64 shrink-0 overflow-y-auto border-l border-border pl-4">
-            <p className="label-xs mb-2">History</p>
-            <ul className="space-y-1.5">
-              {noteHistory.length === 0 && (
-                <li className="text-[12px] text-muted-foreground">No saved versions yet.</li>
-              )}
-              {noteHistory.map((v) => (
-                <li key={v.id} className="rounded-xl bg-surface-2 p-2.5">
-                  <p className="font-mono text-[10.5px] text-muted-foreground">{v.savedAt}</p>
-                  <div
-                    className="notes-rich mt-1 line-clamp-2 text-[12px]"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(v.text) }}
-                  />
-                  <div className="mt-1.5 flex gap-2">
-                    <button
-                      onClick={() => setPreview(preview === v.id ? null : v.id)}
-                      className="text-[11px] text-muted-foreground hover:text-foreground"
-                    >
-                      {preview === v.id ? "Hide" : "View"}
-                    </button>
-                    <button
-                      onClick={() => restoreNoteVersion(v.id)}
-                      className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-                    >
-                      <RotateCcw className="size-3" /> Restore & edit
-                    </button>
-                  </div>
-                  {preview === v.id && (
-                    <div
-                      className="notes-rich mt-2 text-[11.5px] leading-snug"
-                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(v.text) }}
-                    />
-                  )}
-                </li>
-              ))}
-            </ul>
-          </aside>
-        )}
+        {showHistory && <CallHistoryPanel entries={callHistory} />}
       </div>
 
       <footer className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border pt-2">
@@ -299,8 +261,8 @@ export function NotesTool() {
           </button>
           <button
             onClick={() => setShowHistory((v) => !v)}
-            aria-label="Notes history"
-            title="Notes history"
+            aria-label="Call history"
+            title="Call history"
             className={cn(
               "flex size-8 items-center justify-center rounded-full transition-colors",
               showHistory ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary",
@@ -308,21 +270,26 @@ export function NotesTool() {
           >
             <History className="size-[15px]" />
           </button>
-          {activePropertyStyle && (
+          {activePropertyStyle && activeProperty && (
             <button
               onClick={() => {
                 const el = editorRef.current;
                 if (!el?.textContent?.trim() && !el?.querySelector("img")) return;
-                saveNoteToWidget();
+                const hashtags = CALL_HASHTAGS.filter((tag) => plain.includes(tag));
+                finishCall({
+                  html: el.innerHTML,
+                  text: plain,
+                  property: activeProperty.code,
+                  hashtags,
+                });
                 el.innerHTML = "";
                 setPlain("");
-                setNoteText("");
-                toast.success("Call finished", {
+                toast.success("Call ended", {
                   description: `${activePropertyStyle.code} · ${activePropertyStyle.label}`,
                 });
               }}
-              aria-label="Finish call"
-              title="Finish call"
+              aria-label="End call"
+              title="End call"
               className="flex size-8 items-center justify-center rounded-full text-primary-foreground shadow-desk transition-opacity hover:opacity-90"
               style={{ backgroundColor: activePropertyStyle.hex, color: activePropertyStyle.fg }}
             >

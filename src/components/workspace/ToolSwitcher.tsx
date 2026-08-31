@@ -6,6 +6,7 @@ const TOOLS: { id: ToolId; label: string }[] = [
   { id: "notes", label: "Notes" },
   { id: "quote", label: "Quote" },
   { id: "rates", label: "Rates" },
+  { id: "stats", label: "Daily Statistics" },
 ];
 
 export function ToolSwitcher() {

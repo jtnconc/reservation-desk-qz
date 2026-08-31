@@ -1,4 +1,4 @@
-export type ToolId = "notes" | "quote" | "rates";
+export type ToolId = "notes" | "quote" | "rates" | "stats";
 
 export type WidgetType =
   | "reminders"
@@ -123,6 +123,27 @@ export interface Widget {
 export interface NoteVersion {
   id: string;
   text: string;
+  savedAt: string;
+}
+
+/**
+ * A single completed call, logged when "End call" is pressed in the Notes
+ * tool. Kept strictly separate from the general Notes widget/history —
+ * powers the Call History side panel and the Daily Statistics tool.
+ */
+export interface CallLogEntry {
+  id: string;
+  /** Rich HTML content of the note at the time the call was finished. */
+  html: string;
+  /** Plain-text content, used for search. */
+  text: string;
+  /** Property code active when the call was finished. */
+  property: "AR" | "ER" | "RI";
+  /** Action hashtags found in the note (e.g. "#Reserva"). */
+  hashtags: string[];
+  /** ISO 8601 timestamp — used for date-range / day-of-week filtering. */
+  savedAtISO: string;
+  /** Human-readable timestamp for display. */
   savedAt: string;
 }
 
