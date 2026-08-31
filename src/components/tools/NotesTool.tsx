@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { History, RotateCcw, Save } from "lucide-react";
+import { History, PhoneOff, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/workspace/store";
 import {
@@ -8,9 +8,14 @@ import {
   extractReminder,
   parseEntities,
 } from "@/lib/note-parser";
+import {
+  CALL_HASHTAGS,
+  findActivePropertyCode,
+  PROPERTY_STYLES,
+} from "@/lib/property-codes";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
-import { registerNotesEditor } from "./notes-format";
+import { insertHashtagAfterActiveProperty, registerNotesEditor } from "./notes-format";
 
 const HIGHLIGHT_PREFIX = "entity-";
 
@@ -44,8 +49,12 @@ export function NotesTool() {
   }, []);
 
   const entities = useMemo(() => parseEntities(plain), [plain]);
+  const activeProperty = useMemo(() => findActivePropertyCode(plain), [plain]);
+  const activePropertyStyle = activeProperty
+    ? PROPERTY_STYLES[activeProperty.code]
+    : null;
 
-  /** Paint entity highlights with the CSS Custom Highlight API (no overlay → caret stays exact). */
+  /** Paint entity + property-code highlights with the CSS Custom Highlight API (no overlay → caret stays exact). */
   const paintHighlights = useCallback(() => {
     const el = editorRef.current;
     const highlights = (
@@ -55,7 +64,8 @@ export function NotesTool() {
 
     for (const key of Object.keys(ENTITY_STYLES))
       highlights.delete(HIGHLIGHT_PREFIX + key);
-    if (entities.length === 0) return;
+    for (const style of Object.values(PROPERTY_STYLES))
+      highlights.delete(style.highlightKey);
 
     // Flatten text nodes with their global offsets.
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -68,35 +78,50 @@ export function NotesTool() {
       n = walker.nextNode() as Text | null;
     }
 
-    const byType = new Map<string, Range[]>();
-    for (const e of entities) {
+    const rangeFor = (start: number, end: number): Range | null => {
       const range = document.createRange();
       let placedStart = false;
       let placedEnd = false;
-      for (const { node, start } of nodes) {
-        const end = start + node.data.length;
-        if (!placedStart && e.start >= start && e.start <= end) {
-          range.setStart(node, e.start - start);
+      for (const { node, start: nodeStart } of nodes) {
+        const nodeEnd = nodeStart + node.data.length;
+        if (!placedStart && start >= nodeStart && start <= nodeEnd) {
+          range.setStart(node, start - nodeStart);
           placedStart = true;
         }
-        if (placedStart && !placedEnd && e.end >= start && e.end <= end) {
-          range.setEnd(node, e.end - start);
+        if (placedStart && !placedEnd && end >= nodeStart && end <= nodeEnd) {
+          range.setEnd(node, end - nodeStart);
           placedEnd = true;
           break;
         }
       }
-      if (!placedStart || !placedEnd) continue;
-      const list = byType.get(e.type) ?? [];
-      list.push(range);
-      byType.set(e.type, list);
+      return placedStart && placedEnd ? range : null;
+    };
+
+    if (entities.length > 0) {
+      const byType = new Map<string, Range[]>();
+      for (const e of entities) {
+        const range = rangeFor(e.start, e.end);
+        if (!range) continue;
+        const list = byType.get(e.type) ?? [];
+        list.push(range);
+        byType.set(e.type, list);
+      }
+      for (const [type, ranges] of byType)
+        highlights.set(
+          HIGHLIGHT_PREFIX + type,
+          new Highlight(...(ranges as never[])),
+        );
     }
 
-    for (const [type, ranges] of byType)
-      highlights.set(
-        HIGHLIGHT_PREFIX + type,
-        new Highlight(...(ranges as never[])),
-      );
-  }, [entities]);
+    if (activeProperty && activePropertyStyle) {
+      const range = rangeFor(activeProperty.start, activeProperty.end);
+      if (range)
+        highlights.set(
+          activePropertyStyle.highlightKey,
+          new Highlight(range as never),
+        );
+    }
+  }, [entities, activeProperty, activePropertyStyle]);
 
   useEffect(() => {
     paintHighlights();
@@ -215,17 +240,45 @@ export function NotesTool() {
 
       <footer className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border pt-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          {Object.entries(entityCounts).map(([type, count]) => (
-            <span
-              key={type}
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10.5px] font-medium",
-                ENTITY_STYLES[type as keyof typeof ENTITY_STYLES].className,
-              )}
-            >
-              {ENTITY_STYLES[type as keyof typeof ENTITY_STYLES].label} · {count}
-            </span>
-          ))}
+          {activePropertyStyle ? (
+            <>
+              <span
+                className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+                style={{
+                  backgroundColor: activePropertyStyle.hex,
+                  color: activePropertyStyle.fg,
+                }}
+              >
+                {activePropertyStyle.code} · {activePropertyStyle.label}
+              </span>
+              {CALL_HASHTAGS.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => insertHashtagAfterActiveProperty(tag)}
+                  className="rounded-full px-2 py-0.5 text-[10.5px] font-medium transition-opacity hover:opacity-80"
+                  style={{
+                    backgroundColor: `${activePropertyStyle.hex}33`,
+                    color: activePropertyStyle.hex,
+                  }}
+                >
+                  {tag}
+                </button>
+              ))}
+            </>
+          ) : (
+            Object.entries(entityCounts).map(([type, count]) => (
+              <span
+                key={type}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10.5px] font-medium",
+                  ENTITY_STYLES[type as keyof typeof ENTITY_STYLES].className,
+                )}
+              >
+                {ENTITY_STYLES[type as keyof typeof ENTITY_STYLES].label} · {count}
+              </span>
+            ))
+          )}
         </div>
 
         <div className="flex shrink-0 items-center gap-1">
@@ -255,6 +308,27 @@ export function NotesTool() {
           >
             <History className="size-[15px]" />
           </button>
+          {activePropertyStyle && (
+            <button
+              onClick={() => {
+                const el = editorRef.current;
+                if (!el?.textContent?.trim() && !el?.querySelector("img")) return;
+                saveNoteToWidget();
+                el.innerHTML = "";
+                setPlain("");
+                setNoteText("");
+                toast.success("Call finished", {
+                  description: `${activePropertyStyle.code} · ${activePropertyStyle.label}`,
+                });
+              }}
+              aria-label="Finish call"
+              title="Finish call"
+              className="flex size-8 items-center justify-center rounded-full text-primary-foreground shadow-desk transition-opacity hover:opacity-90"
+              style={{ backgroundColor: activePropertyStyle.hex, color: activePropertyStyle.fg }}
+            >
+              <PhoneOff className="size-[15px]" />
+            </button>
+          )}
         </div>
       </footer>
     </div>
