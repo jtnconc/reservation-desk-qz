@@ -1,4 +1,4 @@
-export type ToolId = "notes" | "quote" | "rates" | "stats";
+export type ToolId = "notes" | "quote" | "rates";
 
 export type WidgetType =
   | "reminders"
@@ -6,6 +6,8 @@ export type WidgetType =
   | "notes"
   | "information"
   | "tasks"
+  /** Dashboard widget summarizing call logs by property/day/hashtag. */
+  | "stats"
   /** Independent sticky note extracted from the main Notes widget. */
   | "sticky";
 
@@ -40,7 +42,8 @@ export type WidgetIconName =
   | "pin"
   | "coffee"
   | "briefcase"
-  | "bookmark";
+  | "bookmark"
+  | "chart";
 
 export interface ReminderItem {
   id: string;
@@ -100,7 +103,9 @@ export type WidgetContent =
   | { kind: "contacts"; items: ContactItem[] }
   | { kind: "tasks"; items: TaskItem[] }
   | { kind: "information"; items: InformationItem[] }
-  | { kind: "notes"; items: NoteRefItem[] };
+  | { kind: "notes"; items: NoteRefItem[] }
+  /** Derives its display entirely from `callHistory` — carries no items. */
+  | { kind: "stats" };
 
 export interface Widget {
   id: string;

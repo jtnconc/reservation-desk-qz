@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   BellRing,
   Bookmark,
   Briefcase,
@@ -30,6 +31,7 @@ export const WIDGET_ICONS: Record<WidgetIconName, typeof Info> = {
   coffee: Coffee,
   briefcase: Briefcase,
   bookmark: Bookmark,
+  chart: BarChart3,
 };
 
 export const WIDGET_ICON_NAMES = Object.keys(WIDGET_ICONS) as WidgetIconName[];
@@ -40,6 +42,7 @@ const DEFAULT_BY_TYPE: Record<WidgetType, WidgetIconName> = {
   notes: "note",
   information: "info",
   tasks: "check",
+  stats: "chart",
   sticky: "bookmark",
 };
 

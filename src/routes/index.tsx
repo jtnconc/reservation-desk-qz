@@ -6,7 +6,6 @@ import { WidgetGrid } from "@/components/workspace/WidgetGrid";
 import { NotesTool } from "@/components/tools/NotesTool";
 import { RatesTool } from "@/components/tools/RatesTool";
 import { QuoteTool } from "@/components/tools/QuoteTool";
-import { DailyStatsTool } from "@/components/tools/DailyStatsTool";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -78,7 +77,6 @@ function Workspace({
           <div className="flex min-h-0 flex-1 flex-col">
             {activeTool === "notes" && <NotesTool />}
             {activeTool === "rates" && <RatesTool />}
-            {activeTool === "stats" && <DailyStatsTool />}
             {activeTool === "quote" && (
               <QuoteTool showPreview={quotePreview} showHistory={quoteHistory} />
             )}

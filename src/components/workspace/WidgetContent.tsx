@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowUpRight, Check, Clock, Pencil, Pin, Repeat, Trash2, X } from "lucide-react";
 import { useWorkspace } from "@/workspace/store";
 import type { ItemStatus, NoteRefItem, ReminderItem, TaskItem, Widget } from "@/workspace/types";
@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/sanitize-html";
 import { highlightHtml, highlightText, matchesQuery } from "@/lib/highlight";
 import { RECURRENCE_LABELS, WEEKDAY_LABELS, isTaskDueToday } from "@/lib/task-schedule";
+import { CALL_HASHTAGS, PROPERTY_STYLES } from "@/lib/property-codes";
+import { todayISO } from "@/lib/quote-model";
 import {
   Select,
   SelectContent,
@@ -812,6 +814,114 @@ function InformationContent({ widget }: { widget: Widget }) {
   );
 }
 
+/**
+ * DAILY STATISTICS renders a compact table of call counts — properties
+ * (AR/ER/RI) as rows, action hashtags as columns — for a single day, sourced
+ * live from the isolated `callHistory` log (never from the Notes widget).
+ */
+function StatsContent({ widget }: { widget: Widget }) {
+  const { callHistory } = useWorkspace();
+  const [day, setDay] = useState(todayISO());
+  if (widget.content.kind !== "stats") return null;
+
+  const dayEntries = useMemo(
+    () => callHistory.filter((c) => c.savedAtISO.slice(0, 10) === day),
+    [callHistory, day],
+  );
+
+  const rows = (["AR", "ER", "RI"] as const).map((code) => {
+    const rowEntries = dayEntries.filter((c) => c.property === code);
+    const cells = CALL_HASHTAGS.map(
+      (tag) => rowEntries.filter((c) => c.hashtags.includes(tag)).length,
+    );
+    return { code, cells, total: rowEntries.length };
+  });
+  const colTotals = CALL_HASHTAGS.map(
+    (tag) => dayEntries.filter((c) => c.hashtags.includes(tag)).length,
+  );
+
+  return (
+    <div className="flex h-full min-h-0 flex-col gap-2" onClick={stop}>
+      <div className="flex items-center justify-between gap-2">
+        <input
+          type="date"
+          value={day}
+          onChange={(e) => setDay(e.target.value)}
+          onPointerDown={stop}
+          aria-label="Statistics day"
+          className="min-w-0 rounded-md border border-border bg-surface px-1.5 py-1 text-[11px] text-foreground outline-none"
+        />
+        <span className="label-xs shrink-0">
+          {dayEntries.length} call{dayEntries.length === 1 ? "" : "s"} · {callHistory.length} total
+        </span>
+      </div>
+      {callHistory.length === 0 ? (
+        <p className="text-[12px] text-muted-foreground">
+          Calls finished from the Notes tool will appear here.
+        </p>
+      ) : (
+        <div className="min-w-0 overflow-x-auto">
+          <table className="w-full min-w-[320px] border-collapse text-[11px]">
+            <thead>
+              <tr>
+                <th className="pb-1 pr-2 text-left font-medium text-muted-foreground">Property</th>
+                {CALL_HASHTAGS.map((tag) => (
+                  <th
+                    key={tag}
+                    className="whitespace-nowrap pb-1 px-1.5 text-right font-medium text-muted-foreground"
+                  >
+                    {tag}
+                  </th>
+                ))}
+                <th className="pb-1 pl-1.5 text-right font-medium text-muted-foreground">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {rows.map((row) => {
+                const style = PROPERTY_STYLES[row.code];
+                return (
+                  <tr key={row.code}>
+                    <td className="py-1 pr-2">
+                      <span
+                        className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                        style={{ backgroundColor: style.hex, color: style.fg }}
+                      >
+                        {row.code}
+                      </span>
+                    </td>
+                    {row.cells.map((n, i) => (
+                      <td key={i} className="py-1 px-1.5 text-right font-mono">
+                        {n}
+                      </td>
+                    ))}
+                    <td className="py-1 pl-1.5 text-right font-mono font-semibold">{row.total}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-border/60">
+                <td className="pt-1 pr-2 text-[10.5px] text-muted-foreground">Total</td>
+                {colTotals.map((n, i) => (
+                  <td
+                    key={i}
+                    className="pt-1 px-1.5 text-right font-mono text-[10.5px] text-muted-foreground"
+                  >
+                    {n}
+                  </td>
+                ))}
+                <td className="pt-1 pl-1.5 text-right font-mono text-[10.5px] font-semibold">
+                  {dayEntries.length}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function WidgetContent({ widget }: { widget: Widget }) {
   const c = widget.content;
 
@@ -819,6 +929,7 @@ export function WidgetContent({ widget }: { widget: Widget }) {
   if (c.kind === "tasks") return <TasksContent widget={widget} />;
   if (c.kind === "contacts") return <ContactsContent widget={widget} />;
   if (c.kind === "information") return <InformationContent widget={widget} />;
+  if (c.kind === "stats") return <StatsContent widget={widget} />;
 
   return <NotesContent widget={widget} />;
 }

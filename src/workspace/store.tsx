@@ -130,6 +130,17 @@ const DEFAULT_WIDGETS: Widget[] = [
       ],
     },
   },
+  {
+    id: "w-stats",
+    type: "stats",
+    title: "Daily Statistics",
+    position: 5,
+    width: 2,
+    height: 1,
+    display: "minimized",
+    accent: "blue",
+    content: { kind: "stats" },
+  },
 ];
 
 const DEFAULT_QUOTE = (): QuoteDoc => {
@@ -307,9 +318,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const saved = JSON.parse(raw) as Partial<WorkspaceState>;
+      // Sessions saved before a new widget type (e.g. "stats") existed won't
+      // have it in their stored widget list — append any missing defaults so
+      // returning users pick up newly introduced dashboard widgets.
+      const savedWidgets = saved.widgets ?? DEFAULT_WIDGETS;
+      const missingDefaults = DEFAULT_WIDGETS.filter(
+        (d) => !savedWidgets.some((w) => w.type === d.type),
+      ).map((d, i) => ({ ...d, position: savedWidgets.length + i }));
       setState((s) => ({
         ...s,
         ...saved,
+        widgets: [...savedWidgets, ...missingDefaults],
         // Drop quote documents saved by older versions of the app.
         // The issue date always reflects the current system date on load.
         quote: isValidQuote(saved.quote)
@@ -456,6 +475,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
                 ...w,
                 content: { ...c, items: [{ id: uid(), label: "Detail", value: text }, ...c.items] },
               };
+            if (c.kind !== "notes") return w;
             return { ...w, content: { ...c, items: [{ id: uid(), text }, ...c.items] } };
           }),
         ),
