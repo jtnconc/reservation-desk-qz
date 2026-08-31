@@ -183,6 +183,11 @@
 ::highlight(entity-hotel) { background-color: var(--entity-hotel-bg); color: var(--entity-hotel); }
 ::highlight(entity-place) { background-color: var(--entity-place-bg); color: var(--entity-place); }
 
+/* Call-management property code badges (exact brand hex per property). */
+::highlight(property-ar) { background-color: #C2C0C0; color: #1c1c1e; }
+::highlight(property-er) { background-color: #CE647E; color: #ffffff; }
+::highlight(property-ri) { background-color: #886671; color: #ffffff; }
+
 /* Widget accent palette — subtle, predefined */
 :root {
   --w-neutral: oklch(0.55 0.012 265);

@@ -6,6 +6,8 @@ export type WidgetType =
   | "notes"
   | "information"
   | "tasks"
+  /** Dashboard widget summarizing call logs by property/day/hashtag. */
+  | "stats"
   /** Independent sticky note extracted from the main Notes widget. */
   | "sticky";
 
@@ -40,7 +42,8 @@ export type WidgetIconName =
   | "pin"
   | "coffee"
   | "briefcase"
-  | "bookmark";
+  | "bookmark"
+  | "chart";
 
 export interface ReminderItem {
   id: string;
@@ -100,7 +103,9 @@ export type WidgetContent =
   | { kind: "contacts"; items: ContactItem[] }
   | { kind: "tasks"; items: TaskItem[] }
   | { kind: "information"; items: InformationItem[] }
-  | { kind: "notes"; items: NoteRefItem[] };
+  | { kind: "notes"; items: NoteRefItem[] }
+  /** Derives its display entirely from `callHistory` — carries no items. */
+  | { kind: "stats" };
 
 export interface Widget {
   id: string;
@@ -123,6 +128,27 @@ export interface Widget {
 export interface NoteVersion {
   id: string;
   text: string;
+  savedAt: string;
+}
+
+/**
+ * A single completed call, logged when "End call" is pressed in the Notes
+ * tool. Kept strictly separate from the general Notes widget/history —
+ * powers the Call History side panel and the Daily Statistics tool.
+ */
+export interface CallLogEntry {
+  id: string;
+  /** Rich HTML content of the note at the time the call was finished. */
+  html: string;
+  /** Plain-text content, used for search. */
+  text: string;
+  /** Property code active when the call was finished. */
+  property: "AR" | "ER" | "RI";
+  /** Action hashtags found in the note (e.g. "#Reserva"). */
+  hashtags: string[];
+  /** ISO 8601 timestamp — used for date-range / day-of-week filtering. */
+  savedAtISO: string;
+  /** Human-readable timestamp for display. */
   savedAt: string;
 }
 
